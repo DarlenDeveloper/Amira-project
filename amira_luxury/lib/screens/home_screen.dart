@@ -194,54 +194,83 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey.shade200,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset('assets/images/logo.jpeg', fit: BoxFit.cover),
+            Text(
+              'Good morning',
+              style: TextStyle(
+                fontSize: 14,
+                color: _grey,
+                fontWeight: FontWeight.w400,
+                fontFamily: 'Satoshi',
               ),
             ),
-            const SizedBox(width: 11),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Good morning!',
-                    style: TextStyle(
-                        fontSize: 13, color: _grey,
-                        fontWeight: FontWeight.w400, fontFamily: 'Satoshi')),
-                SizedBox(height: 2),
-                Text('Amira Interiors',
-                    style: TextStyle(
-                        fontSize: 17, color: _dark,
-                        fontWeight: FontWeight.w700, fontFamily: 'Satoshi')),
-              ],
+            SizedBox(height: 2),
+            Text(
+              'Jane Doe',
+              style: TextStyle(
+                fontSize: 20,
+                color: _dark,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Satoshi',
+              ),
             ),
           ],
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        Row(
           children: [
-            const Text('Location',
-                style: TextStyle(
-                    fontSize: 12, color: _grey,
-                    fontWeight: FontWeight.w400, fontFamily: 'Satoshi')),
-            const SizedBox(height: 2),
-            Row(
-              children: const [
-                Icon(Iconsax.location, size: 14, color: _dark),
-                SizedBox(width: 4),
-                Text('Nairobi, KE',
-                    style: TextStyle(
-                        fontSize: 15, color: _dark,
-                        fontWeight: FontWeight.w600, fontFamily: 'Satoshi')),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Iconsax.notification, color: _dark, size: 22),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE74C3C),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
               ],
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/user_avatar.jpg'),
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ],
         ),
