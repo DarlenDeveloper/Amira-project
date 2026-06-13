@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import '../widgets/custom_bottom_nav.dart';
 
 const _bg = Color(0xFFEFEFE9);
 const _white = Colors.white;
@@ -66,6 +67,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  int _navIndex = 0;
   final CardSwiperController _swiperController = CardSwiperController();
   bool _imagesCached = false;
   late AnimationController _borderAnimationController;
@@ -112,21 +114,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: _bg,
+        extendBody: true,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: _buildHeader(),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildSearchBar(),
-            ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildHeader(),
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildSearchBar(),
+                    ),
             const SizedBox(height: 32),
 
             // Card swiper — 45% of screen height
@@ -184,10 +194,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
             const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+            // Bottom Navigation
+            CustomBottomNav(
+              currentIndex: _navIndex,
+              onTap: (index) {
+                setState(() {
+                  _navIndex = index;
+                });
+                // Handle navigation here
+              },
+            ),
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildHeader() {
