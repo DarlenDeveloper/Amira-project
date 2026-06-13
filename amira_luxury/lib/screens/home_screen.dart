@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _initAnimationController() {
     _borderAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     )..repeat();
   }
 
@@ -250,86 +250,83 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: _white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Image attachment icon
-          GestureDetector(
-            onTap: () {},
-            child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
-          ),
-          const SizedBox(width: 16),
-          // Voice icon
-          GestureDetector(
-            onTap: () {},
-            child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
-          ),
-          const SizedBox(width: 14),
-          // Input field
-          const Expanded(
-            child: TextField(
-              style: TextStyle(fontFamily: 'Satoshi', fontSize: 15, fontWeight: FontWeight.w500, color: _dark),
-              decoration: InputDecoration(
-                hintText: 'Ask Amira agent',
-                hintStyle: TextStyle(
-                  color: Color(0xFFB8B8B8),
-                  fontSize: 15,
-                  fontFamily: 'Satoshi',
-                  fontWeight: FontWeight.w400,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
-              ),
+    return AnimatedBuilder(
+      animation: _borderAnimationController,
+      builder: (context, child) {
+        // Apply easeInOutCubic for smooth acceleration/deceleration
+        final curvedValue = Curves.easeInOutCubic.transform(_borderAnimationController.value);
+        
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            gradient: SweepGradient(
+              colors: const [
+                Color(0xFFB5945A), // gold
+                Color(0xFFFFFFFF), // white
+                Color(0xFF2A2A2A), // black
+                Color(0xFFB5945A), // gold
+                Color(0xFFE8C88E), // lighter gold
+                Color(0xFFB5945A), // back to gold
+              ],
+              stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+              transform: GradientRotation(curvedValue * 2 * 3.14159),
             ),
           ),
-          const SizedBox(width: 12),
-          // Send button with animated gradient border
-          AnimatedBuilder(
-            animation: _borderAnimationController,
-            builder: (context, child) {
-              return Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: SweepGradient(
-                    colors: const [
-                      Color(0xFF6366F1), // indigo
-                      Color(0xFF8B5CF6), // purple
-                      Color(0xFFEC4899), // pink
-                      Color(0xFF3B82F6), // blue
-                      Color(0xFF6366F1), // back to indigo
-                    ],
-                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                    transform: GradientRotation(_borderAnimationController.value * 2 * 3.14159),
+          padding: const EdgeInsets.all(2),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              children: [
+                // Image attachment icon
+                GestureDetector(
+                  onTap: () {},
+                  child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
+                ),
+                const SizedBox(width: 16),
+                // Voice icon
+                GestureDetector(
+                  onTap: () {},
+                  child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
+                ),
+                const SizedBox(width: 14),
+                // Input field
+                const Expanded(
+                  child: TextField(
+                    style: TextStyle(fontFamily: 'Satoshi', fontSize: 15, fontWeight: FontWeight.w500, color: _dark),
+                    decoration: InputDecoration(
+                      hintText: 'Ask Amira agent',
+                      hintStyle: TextStyle(
+                        color: Color(0xFFB8B8B8),
+                        fontSize: 15,
+                        fontFamily: 'Satoshi',
+                        fontWeight: FontWeight.w400,
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    ),
                   ),
                 ),
-                padding: const EdgeInsets.all(2),
-                child: Container(
+                const SizedBox(width: 12),
+                // Send button
+                Container(
+                  width: 44,
+                  height: 44,
                   decoration: const BoxDecoration(
                     color: Color(0xFF1A1A1A),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
                 ),
-              );
-            },
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
