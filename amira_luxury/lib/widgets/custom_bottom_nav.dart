@@ -14,7 +14,7 @@ class CustomBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20, top: 10),
+      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 30, top: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -26,6 +26,12 @@ class CustomBottomNav extends StatelessWidget {
               color: const Color(0xFF2A2A2A),
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
+                BoxShadow(
+                  color: Colors.white.withOpacity(0.1),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                  offset: const Offset(0, -4),
+                ),
                 BoxShadow(
                   color: Colors.black.withOpacity(0.15),
                   blurRadius: 20,
@@ -68,6 +74,12 @@ class CustomBottomNav extends StatelessWidget {
                 color: const Color(0xFF2A2A2A),
                 shape: BoxShape.circle,
                 boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.1),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                    offset: const Offset(0, -4),
+                  ),
                   BoxShadow(
                     color: Colors.black.withOpacity(0.15),
                     blurRadius: 20,
