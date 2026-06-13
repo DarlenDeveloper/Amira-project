@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -21,7 +22,7 @@ class CustomBottomNav extends StatelessWidget {
           // Main pill with 3 buttons
           Container(
             height: 64,
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: const Color(0xFF2A2A2A),
               borderRadius: BorderRadius.circular(32),
@@ -43,22 +44,24 @@ class CustomBottomNav extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _NavItem(
-                  icon: Iconsax.home,
+                  icon: Iconsax.home_15,
                   label: 'Home',
                   isActive: currentIndex == 0,
                   onTap: () => onTap(0),
                 ),
                 _NavIconOnly(
-                  icon: Iconsax.layer,
                   label: 'Explore',
                   isActive: currentIndex == 1,
                   onTap: () => onTap(1),
+                  isSvg: true,
+                  svgPath: 'assets/images/discover_icon.svg',
                 ),
                 _NavIconOnly(
-                  icon: Iconsax.camera,
-                  label: 'Studio',
+                  label: 'Visual Studio',
                   isActive: currentIndex == 2,
                   onTap: () => onTap(2),
+                  isSvg: true,
+                  svgPath: 'assets/images/smart_cursor_icon.svg',
                 ),
               ],
             ),
@@ -70,6 +73,7 @@ class CustomBottomNav extends StatelessWidget {
             child: Container(
               width: 64,
               height: 64,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF2A2A2A),
                 shape: BoxShape.circle,
@@ -87,11 +91,12 @@ class CustomBottomNav extends StatelessWidget {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(16),
-              child: Image.asset(
-                'assets/images/ai_agent.png',
-                color: Colors.white,
-                fit: BoxFit.contain,
+              child: SvgPicture.asset(
+                'assets/images/ai_icon.svg',
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
@@ -120,7 +125,7 @@ class _NavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 18 : 16,
+          horizontal: isActive ? 20 : 16,
           vertical: 12,
         ),
         decoration: BoxDecoration(
@@ -136,7 +141,7 @@ class _NavItem extends StatelessWidget {
               size: 22,
             ),
             if (isActive) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 label,
                 style: const TextStyle(
@@ -155,16 +160,20 @@ class _NavItem extends StatelessWidget {
 }
 
 class _NavIconOnly extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final bool isSvg;
+  final String? svgPath;
 
   const _NavIconOnly({
-    required this.icon,
+    this.icon,
     required this.label,
     required this.isActive,
     required this.onTap,
+    this.isSvg = false,
+    this.svgPath,
   });
 
   @override
@@ -175,7 +184,7 @@ class _NavIconOnly extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 18 : 16,
+          horizontal: isActive ? 20 : 16,
           vertical: 12,
         ),
         decoration: BoxDecoration(
@@ -185,13 +194,24 @@ class _NavIconOnly extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isActive ? const Color(0xFF2A2A2A) : Colors.white70,
-              size: 22,
-            ),
+            if (isSvg && svgPath != null)
+              SvgPicture.asset(
+                svgPath!,
+                width: 22,
+                height: 22,
+                colorFilter: ColorFilter.mode(
+                  isActive ? const Color(0xFF2A2A2A) : Colors.white70,
+                  BlendMode.srcIn,
+                ),
+              )
+            else
+              Icon(
+                icon,
+                color: isActive ? const Color(0xFF2A2A2A) : Colors.white70,
+                size: 22,
+              ),
             if (isActive) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Text(
                 label,
                 style: const TextStyle(

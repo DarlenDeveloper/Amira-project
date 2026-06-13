@@ -252,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ],
                   ),
-                  child: const Icon(Iconsax.notification, color: _dark, size: 22),
+                  child: const Icon(Iconsax.notification5, color: _dark, size: 22),
                 ),
                 Positioned(
                   top: 8,
@@ -328,13 +328,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 // Image attachment icon
                 GestureDetector(
                   onTap: () {},
-                  child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
+                  child: const Icon(Iconsax.gallery5, color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 16),
                 // Voice icon
                 GestureDetector(
                   onTap: () {},
-                  child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
+                  child: const Icon(Iconsax.microphone_25, color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 14),
                 // Input field
@@ -467,7 +467,7 @@ class _FeaturedCard extends StatelessWidget {
                   color: _white.withOpacity(0.88),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Iconsax.heart, size: 17, color: _dark),
+                child: const Icon(Iconsax.heart5, size: 17, color: _dark),
               ),
             ),
 
@@ -575,7 +575,7 @@ class _RecommendCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Iconsax.location, size: 13, color: _grey),
+                        const Icon(Iconsax.location5, size: 13, color: _grey),
                         const SizedBox(width: 4),
                         Text(data['location']!,
                             style: const TextStyle(
