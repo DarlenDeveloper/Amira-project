@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
+import 'screens/visual_studio_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
 void main() {
@@ -42,7 +43,7 @@ class _MainNavigatorState extends State<MainNavigator> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const ExploreScreen(),
-    const PlaceholderScreen(title: 'Visual Studio'),
+    const VisualStudioScreen(),
     const PlaceholderScreen(title: 'AI Agent'),
   ];
 
