@@ -64,10 +64,24 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   final CardSwiperController _swiperController = CardSwiperController();
   bool _imagesCached = false;
+  late AnimationController _borderAnimationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimationController();
+  }
+
+  void _initAnimationController() {
+    _borderAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+  }
 
   @override
   void didChangeDependencies() {
@@ -90,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _swiperController.dispose();
+    _borderAnimationController.dispose();
     super.dispose();
   }
 
@@ -235,44 +250,86 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 56,
-            decoration: BoxDecoration(
-              color: _white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
-            ),
-            child: const TextField(
-              style: TextStyle(fontFamily: 'Satoshi', fontSize: 15, fontWeight: FontWeight.w500),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Image attachment icon
+          GestureDetector(
+            onTap: () {},
+            child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
+          ),
+          const SizedBox(width: 16),
+          // Voice icon
+          GestureDetector(
+            onTap: () {},
+            child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
+          ),
+          const SizedBox(width: 14),
+          // Input field
+          const Expanded(
+            child: TextField(
+              style: TextStyle(fontFamily: 'Satoshi', fontSize: 15, fontWeight: FontWeight.w500, color: _dark),
               decoration: InputDecoration(
-                hintText: 'Search designs...',
-                hintStyle: TextStyle(color: Color(0xFFC4C4C4), fontSize: 15, fontFamily: 'Satoshi', fontWeight: FontWeight.w400),
-                prefixIcon: Padding(
-                  padding: EdgeInsets.only(left: 18, right: 12),
-                  child: Icon(Iconsax.search_normal_1, color: Color(0xFFC4C4C4), size: 20),
+                hintText: 'Ask Amira agent',
+                hintStyle: TextStyle(
+                  color: Color(0xFFB8B8B8),
+                  fontSize: 15,
+                  fontFamily: 'Satoshi',
+                  fontWeight: FontWeight.w400,
                 ),
-                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 18),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: _white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+          const SizedBox(width: 12),
+          // Send button with animated gradient border
+          AnimatedBuilder(
+            animation: _borderAnimationController,
+            builder: (context, child) {
+              return Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: SweepGradient(
+                    colors: const [
+                      Color(0xFF6366F1), // indigo
+                      Color(0xFF8B5CF6), // purple
+                      Color(0xFFEC4899), // pink
+                      Color(0xFF3B82F6), // blue
+                      Color(0xFF6366F1), // back to indigo
+                    ],
+                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                    transform: GradientRotation(_borderAnimationController.value * 2 * 3.14159),
+                  ),
+                ),
+                padding: const EdgeInsets.all(2),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1A1A1A),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+                ),
+              );
+            },
           ),
-          child: const Icon(Iconsax.setting_4, color: _dark, size: 20),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
