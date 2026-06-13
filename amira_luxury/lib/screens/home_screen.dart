@@ -119,15 +119,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Scaffold(
         backgroundColor: _bg,
         extendBody: true,
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: _navIndex,
+          onTap: (index) {
+            setState(() => _navIndex = index);
+          },
+        ),
         body: SafeArea(
           bottom: false,
-          child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                       child: _buildHeader(),
@@ -193,25 +196,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 itemBuilder: (_, i) => _RecommendCard(data: _recommendations[i]),
               ),
             ),
-            const SizedBox(height: 30),
-                  ],
-                ),
-              ),
+            const SizedBox(height: 100),
+              ],
             ),
-            // Bottom Navigation
-            CustomBottomNav(
-              currentIndex: _navIndex,
-              onTap: (index) {
-                setState(() {
-                  _navIndex = index;
-                });
-                // Handle navigation here
-              },
-            ),
-          ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildHeader() {
