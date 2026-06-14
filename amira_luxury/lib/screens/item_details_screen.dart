@@ -1,0 +1,441 @@
+import 'package:flutter/material.dart';
+import 'visual_studio_screen.dart';
+
+const _bg = Color(0xFFF2F2EE);
+const _white = Colors.white;
+const _dark = Color(0xFF2A2A2A);
+const _grey = Color(0xFF8B8B8B);
+const _gold = Color(0xFFB5945A);
+
+class ItemDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const ItemDetailsScreen({super.key, required this.data});
+
+  @override
+  State<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
+}
+
+class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
+  int _qty = 1;
+
+  double get _value => (widget.data['value'] as num?)?.toDouble() ?? 0;
+  String get _unit => widget.data['unit'] as String? ?? 'unit';
+  double get _total => _value * _qty;
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: const TextStyle(fontFamily: 'Satoshi')),
+        backgroundColor: _dark,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1400),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.data;
+    return Scaffold(
+      backgroundColor: _bg,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image with overlaid back + cart
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16, MediaQuery.of(context).padding.top + 12, 16, 0,
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: Image.asset(
+                            data['image'],
+                            height: MediaQuery.of(context).size.height * 0.48,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          right: 12,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _circleBtn(
+                                icon: Icons.arrow_back,
+                                onTap: () => Navigator.of(context).maybePop(),
+                              ),
+                              _circleBtn(
+                                icon: Icons.shopping_bag_rounded,
+                                dark: true,
+                                onTap: () =>
+                                    _snack('${data['name']} added to cart'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Name + quantity stepper
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            data['name'],
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: _dark,
+                              fontFamily: 'Satoshi',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _QtyStepper(
+                          qty: _qty,
+                          onIncrement: () => setState(() => _qty++),
+                          onDecrement: () =>
+                              setState(() => _qty > 1 ? _qty-- : _qty),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Price per unit
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                    child: Text(
+                      '\$${_value.toStringAsFixed(0)} / $_unit',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: _gold,
+                        fontFamily: 'Satoshi',
+                      ),
+                    ),
+                  ),
+
+                  // Description
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                    child: Text(
+                      data['about'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: _grey,
+                        fontFamily: 'Satoshi',
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          _buildBottomBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _circleBtn({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool dark = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: dark ? _dark : _white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: dark ? _white : _dark, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20, 18, 20, 18 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Total price + slide to visualise
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Total Price',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: _grey,
+                      fontFamily: 'Satoshi',
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '\$${_total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                      fontFamily: 'Satoshi',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _SlideToAction(
+                  label: 'Visualise with AI',
+                  onComplete: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const VisualStudioScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Order + Book Appointment
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _snack('Order placed for ${widget.data['name']}'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(32),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Order',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _white,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _snack('Appointment request sent'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: _white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: _dark, width: 1.5),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Book Appointment',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _dark,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QtyStepper extends StatelessWidget {
+  final int qty;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+
+  const _QtyStepper({
+    required this.qty,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _stepBtn(Icons.remove, onDecrement),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Text(
+              '$qty',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _dark,
+                fontFamily: 'Satoshi',
+              ),
+            ),
+          ),
+          _stepBtn(Icons.add, onIncrement),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: const BoxDecoration(color: _bg, shape: BoxShape.circle),
+        child: Icon(icon, size: 17, color: _dark),
+      ),
+    );
+  }
+}
+
+/// Slide-to-confirm button. Drag the thumb to the right to trigger [onComplete].
+class _SlideToAction extends StatefulWidget {
+  final String label;
+  final VoidCallback onComplete;
+
+  const _SlideToAction({required this.label, required this.onComplete});
+
+  @override
+  State<_SlideToAction> createState() => _SlideToActionState();
+}
+
+class _SlideToActionState extends State<_SlideToAction> {
+  double _dragX = 0;
+  static const double _height = 58;
+  static const double _thumb = 50;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxX = constraints.maxWidth - _thumb - 8;
+        return Container(
+          height: _height,
+          decoration: BoxDecoration(
+            color: _dark,
+            borderRadius: BorderRadius.circular(_height / 2),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: _thumb * 0.6),
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _white,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 4 + _dragX,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (d) {
+                    setState(() {
+                      _dragX = (_dragX + d.delta.dx).clamp(0, maxX);
+                    });
+                  },
+                  onHorizontalDragEnd: (_) {
+                    if (_dragX >= maxX * 0.85) {
+                      widget.onComplete();
+                    }
+                    setState(() => _dragX = 0);
+                  },
+                  child: Container(
+                    width: _thumb,
+                    height: _thumb,
+                    decoration: const BoxDecoration(
+                      color: _gold,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: _white,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

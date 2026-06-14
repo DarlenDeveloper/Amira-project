@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'cart_screen.dart';
+import 'item_details_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -16,6 +17,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/pvc marble sheet.jpeg',
     'name': 'PVC Marble Sheets',
     'price': 'From \$56 / sqm',
+    'value': 56.0,
+    'unit': 'sqm',
+    'about':
+        'Seamless, high-gloss marble-look sheets that bring timeless elegance to any wall — the beauty of natural stone without the weight or cost.',
     'badge': 'LUXURY',
     'isFavorite': false,
   },
@@ -23,6 +28,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/bamboo wall panel.jpeg',
     'name': 'Bamboo Wall Panel',
     'price': 'From \$42 / sqm',
+    'value': 42.0,
+    'unit': 'sqm',
+    'about':
+        'Warm, sustainable bamboo panels that add natural texture and a calm, organic feel to refined interior spaces.',
     'badge': 'BESTSELLER',
     'isFavorite': false,
   },
@@ -30,6 +39,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/wpc wall panel.jpeg',
     'name': 'WPC Wall Panel',
     'price': 'From \$38 / sqm',
+    'value': 38.0,
+    'unit': 'sqm',
+    'about':
+        'Durable wood-plastic composite panels — moisture-resistant, low-maintenance, and quietly refined.',
     'badge': null,
     'isFavorite': false,
   },
@@ -37,6 +50,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/pvc wall panel.jpeg',
     'name': 'PVC Wall Panel',
     'price': 'From \$32 / sqm',
+    'value': 32.0,
+    'unit': 'sqm',
+    'about':
+        'Lightweight, easy-to-install PVC panels with a clean finish for fast, elegant wall transformations.',
     'badge': null,
     'isFavorite': false,
   },
@@ -44,6 +61,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/soft stone.jpeg',
     'name': 'Soft Stone',
     'price': 'From \$48 / sqm',
+    'value': 48.0,
+    'unit': 'sqm',
+    'about':
+        'Flexible natural stone veneer that wraps curves and corners with authentic stone character.',
     'badge': null,
     'isFavorite': false,
   },
@@ -51,6 +72,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/pu stone.jpeg',
     'name': 'PU Stone',
     'price': 'From \$45 / sqm',
+    'value': 45.0,
+    'unit': 'sqm',
+    'about':
+        'Lightweight polyurethane stone with realistic texture — the look of rock at a fraction of the weight.',
     'badge': null,
     'isFavorite': false,
   },
@@ -58,6 +83,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/lights.jpeg',
     'name': 'Lights',
     'price': 'From \$25 / unit',
+    'value': 25.0,
+    'unit': 'unit',
+    'about':
+        'Curated ambient and accent lighting to set the mood and highlight your finest details.',
     'badge': 'NEW',
     'isFavorite': false,
   },
@@ -65,6 +94,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/Artificial Grass.jpeg',
     'name': 'Artificial Grass & Carpets',
     'price': 'From \$18 / sqm',
+    'value': 18.0,
+    'unit': 'sqm',
+    'about':
+        'Soft, luxurious greens and carpets that bring comfort and warmth underfoot, indoors or out.',
     'badge': null,
     'isFavorite': false,
   },
@@ -72,6 +105,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/steel profile.jpeg',
     'name': 'Steel Profile',
     'price': 'From \$12 / m',
+    'value': 12.0,
+    'unit': 'm',
+    'about':
+        'Precision steel profiles and trims for crisp, modern edges and seamless transitions.',
     'badge': null,
     'isFavorite': false,
   },
@@ -79,6 +116,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/blinds.jpeg',
     'name': 'Blinds',
     'price': 'From \$35 / unit',
+    'value': 35.0,
+    'unit': 'unit',
+    'about':
+        'Tailored window treatments that balance privacy, light, and understated luxury.',
     'badge': null,
     'isFavorite': false,
   },
@@ -86,6 +127,10 @@ final List<Map<String, dynamic>> _materials = [
     'image': '$_specialitiesDir/block boards.jpeg',
     'name': 'Block Boards',
     'price': 'From \$40 / sheet',
+    'value': 40.0,
+    'unit': 'sheet',
+    'about':
+        'Engineered block boards offering strength and a smooth base for premium joinery.',
     'badge': null,
     'isFavorite': false,
   },
@@ -240,7 +285,13 @@ class _MaterialCardState extends State<_MaterialCard> {
   Widget build(BuildContext context) {
     final badge = widget.data['badge'];
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ItemDetailsScreen(data: widget.data),
+          ),
+        );
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,8 +390,8 @@ class _MaterialCardState extends State<_MaterialCard> {
             widget.data['price'],
             style: const TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: _grey,
+              fontWeight: FontWeight.w500,
+              color: _gold,
               fontFamily: 'Satoshi',
             ),
           ),
