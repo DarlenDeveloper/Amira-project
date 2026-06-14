@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'profile_screen.dart';
 
 const _bg = Color(0xFFEFEFE9);
 const _white = Colors.white;
@@ -318,21 +319,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ],
             ),
             const SizedBox(width: 12),
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/user_avatar.jpg'),
+                    fit: BoxFit.cover,
                   ),
-                ],
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/user_avatar.jpg'),
-                  fit: BoxFit.cover,
                 ),
               ),
             ),

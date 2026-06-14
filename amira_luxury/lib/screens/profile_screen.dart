@@ -1,0 +1,253 @@
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+
+const _bg = Color(0xFFF2F2EE);
+const _white = Colors.white;
+const _dark = Color(0xFF2A2A2A);
+const _grey = Color(0xFF8B8B8B);
+const _divider = Color(0xFFEDEDE8);
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  // Menu divided into logical sections. Language removed; Subscription, Orders,
+  // Terms & Conditions and Privacy Policy added.
+  static const List<_MenuSection> _sections = [
+    _MenuSection('Account', [
+      _MenuEntry(Iconsax.profile_circle5, 'Manage Profile'),
+      _MenuEntry(Iconsax.crown5, 'Subscription'),
+      _MenuEntry(Iconsax.shopping_cart5, 'Orders'),
+      _MenuEntry(Iconsax.calendar5, 'Appointments'),
+    ]),
+    _MenuSection('Security & Alerts', [
+      _MenuEntry(Iconsax.lock5, 'Password & Security'),
+      _MenuEntry(Iconsax.notification5, 'Notifications'),
+    ]),
+    _MenuSection('About & Legal', [
+      _MenuEntry(Iconsax.info_circle5, 'About Us'),
+      _MenuEntry(Iconsax.document_text5, 'Terms & Conditions'),
+      _MenuEntry(Iconsax.shield_tick5, 'Privacy Policy'),
+    ]),
+    _MenuSection('Support', [
+      _MenuEntry(Iconsax.message_question5, 'Help Center'),
+      _MenuEntry(Iconsax.call5, 'Contact Us'),
+    ]),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header with back button + centered title
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).maybePop(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: _white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_back, color: _dark, size: 20),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'Profile',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                      fontFamily: 'Satoshi',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                child: Column(
+                  children: [
+                    _buildUserCard(),
+                    const SizedBox(height: 24),
+                    ..._sections.map((s) => _buildSection(s)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              image: DecorationImage(
+                image: AssetImage('assets/images/user_avatar.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Jane Doe',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _dark,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'jane.doe@gmail.com',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: _grey,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(_MenuSection section) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+          child: Text(
+            section.title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _grey,
+              fontFamily: 'Satoshi',
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              for (int i = 0; i < section.entries.length; i++) ...[
+                _MenuTile(entry: section.entries[i], onTap: () {}),
+                if (i != section.entries.length - 1)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 56),
+                    child: Divider(height: 1, thickness: 1, color: _divider),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
+}
+
+class _MenuSection {
+  final String title;
+  final List<_MenuEntry> entries;
+  const _MenuSection(this.title, this.entries);
+}
+
+class _MenuEntry {
+  final IconData icon;
+  final String label;
+  const _MenuEntry(this.icon, this.label);
+}
+
+class _MenuTile extends StatelessWidget {
+  final _MenuEntry entry;
+  final VoidCallback onTap;
+
+  const _MenuTile({required this.entry, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(child: Icon(entry.icon, color: _dark, size: 22)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                entry.label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _dark,
+                  fontFamily: 'Satoshi',
+                ),
+              ),
+            ),
+            const Icon(Iconsax.arrow_right_3, color: _grey, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}

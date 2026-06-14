@@ -62,6 +62,15 @@ Use these constants. Do not introduce new colors without a reason.
 - The app shell is a `PageView` driven by `CustomBottomNav` (Home, Explore,
   Visual Studio, AI Agent). New primary screens slot into this navigator.
 
+## Iconography
+
+- **Use the bold/filled Iconsax variants** (the `5` suffix, e.g. `Iconsax.user5`,
+  `Iconsax.notification5`, `Iconsax.heart5`, `Iconsax.calendar5`). The premium
+  filled style is the app-wide standard — do not use the thin outline variants
+  for primary icons.
+- Directional chevrons (e.g. `Iconsax.arrow_right_3`) are an exception; they
+  stay as line glyphs since there's no filled equivalent.
+
 ## Code Conventions
 
 - Match the existing file structure: screens in `lib/screens/`, reusable
