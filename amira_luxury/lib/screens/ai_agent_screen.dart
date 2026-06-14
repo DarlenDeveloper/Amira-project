@@ -25,6 +25,9 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _initAnimationController();
+    _focusNode.addListener(() {
+      setState(() {}); // Rebuild when focus changes
+    });
   }
 
   void _initAnimationController() {
@@ -135,12 +138,17 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
 
               // Search bar positioned just above bottom nav when no messages
               Padding(
-                padding: EdgeInsets.fromLTRB(20, 12, 20, 30),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  _focusNode.hasFocus ? 2 : 30, // Minimal padding when focused
+                ),
                 child: _buildSearchBar(),
               ),
               
-              // Fixed space for bottom nav area when no messages
-              if (_messages.isEmpty)
+              // Fixed space for bottom nav area when no messages and not focused
+              if (_messages.isEmpty && !_focusNode.hasFocus)
                 const SizedBox(height: 100),
             ],
           ),
