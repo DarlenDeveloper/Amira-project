@@ -16,6 +16,25 @@ Target: Premium, warm, and visually immersive experience that reflects the Amira
 
 ---
 
+## Product Categories
+
+Amira Interiors specializes in 11 product categories. These are the client's
+core specialities and drive the catalog, Explore gallery, and Home portfolio.
+
+1. PVC Marble Sheets
+2. Bamboo Wall Panel
+3. WPC Wall Panel
+4. PVC Wall Panel
+5. Soft Stone
+6. PU Stone
+7. Lights
+8. Artificial Grass & Carpets
+9. Steel Profile
+10. Blinds
+11. Block Boards
+
+---
+
 ## Core Features
 
 ### 1. Interior Vision Studio

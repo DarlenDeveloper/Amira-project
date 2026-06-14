@@ -10,27 +10,76 @@ const _lightGrey = Color(0xFFD8D8D8);
 const _orange = Color(0xFFE8621A);
 const _olive = Color(0xFF556B4A);
 
+// Amira's 11 product specialities — drives the Home portfolio swiper.
+const _specialitiesDir = 'assets/images/company specilialities';
+
 final List<Map<String, String>> _featuredCards = [
   {
-    'image': 'assets/images/jean-philippe-delberghe-T5BF4OyQLwU-unsplash.jpg',
-    'tag': 'PORTFOLIO',
-    'area': '400 sqm',
-    'rooms': '5, 2 bath',
-    'extras': '2 garage',
+    'image': '$_specialitiesDir/pvc marble sheet.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'PVC Marble Sheets',
+    'desc': 'Seamless marble-look wall cladding',
   },
   {
-    'image': 'assets/images/franco-debartolo-VB6h-h54qIk-unsplash.jpg',
-    'tag': 'PORTFOLIO',
-    'area': '520 sqm',
-    'rooms': '6, 3 bath',
-    'extras': 'Pool + gym',
+    'image': '$_specialitiesDir/bamboo wall panel.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Bamboo Wall Panel',
+    'desc': 'Natural, sustainable wall texture',
   },
   {
-    'image': 'assets/images/makespace-design-vdfUjNhI1PA-unsplash.jpg',
-    'tag': 'PORTFOLIO',
-    'area': '280 sqm',
-    'rooms': '3, 1 bath',
-    'extras': 'Open plan',
+    'image': '$_specialitiesDir/wpc wall panel.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'WPC Wall Panel',
+    'desc': 'Durable wood-plastic composite',
+  },
+  {
+    // TODO: replace with dedicated PVC Wall Panel image (currently using WPC as a stand-in).
+    'image': '$_specialitiesDir/wpc wall panel.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'PVC Wall Panel',
+    'desc': 'Lightweight, easy-fit wall finish',
+  },
+  {
+    'image': '$_specialitiesDir/soft stone.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Soft Stone',
+    'desc': 'Flexible natural stone veneer',
+  },
+  {
+    'image': '$_specialitiesDir/pu stone.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'PU Stone',
+    'desc': 'Lightweight polyurethane stone',
+  },
+  {
+    'image': '$_specialitiesDir/lights.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Lights',
+    'desc': 'Ambient & accent lighting',
+  },
+  {
+    'image': '$_specialitiesDir/Artificial Grass.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Artificial Grass & Carpets',
+    'desc': 'Soft greens & floor textures',
+  },
+  {
+    'image': '$_specialitiesDir/steel profile.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Steel Profile',
+    'desc': 'Precision metal trims & frames',
+  },
+  {
+    'image': '$_specialitiesDir/blinds.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Blinds',
+    'desc': 'Tailored window treatments',
+  },
+  {
+    'image': '$_specialitiesDir/block boards.jpeg',
+    'tag': 'SPECIALITY',
+    'name': 'Block Boards',
+    'desc': 'Engineered wood panels',
   },
 ];
 
@@ -93,11 +142,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _precacheImages() {
+    // Precache at the SAME pixel size the cards render with (their cacheWidth),
+    // so the warmed cache entry matches what's displayed and images appear
+    // instantly instead of decoding on first paint.
     for (var card in _featuredCards) {
-      precacheImage(AssetImage(card['image']!), context);
+      precacheImage(
+        ResizeImage(AssetImage(card['image']!), width: 600),
+        context,
+      );
     }
     for (var rec in _recommendations) {
-      precacheImage(AssetImage(rec['image']!), context);
+      precacheImage(
+        ResizeImage(AssetImage(rec['image']!), width: 200),
+        context,
+      );
     }
   }
 
@@ -164,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Text(
-                    'Recommendation',
+                    'Our Portfolio',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -436,7 +494,7 @@ class _FeaturedCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
-                  data['tag']!,
+                  data['name']!,
                   style: const TextStyle(
                     color: _dark,
                     fontSize: 13,
@@ -473,12 +531,19 @@ class _FeaturedCard extends StatelessWidget {
                   color: _white.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _Stat(label: 'Area', value: data['area']!),
-                    _Stat(label: 'Rooms', value: data['rooms']!),
-                    _Stat(label: 'Parking Spots', value: data['extras']!),
+                    Text(
+                      data['desc']!,
+                      style: const TextStyle(
+                        color: _dark,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Satoshi',
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -487,30 +552,6 @@ class _FeaturedCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-  const _Stat({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: _grey, fontSize: 11,
-                fontWeight: FontWeight.w400, fontFamily: 'Satoshi')),
-        const SizedBox(height: 3),
-        Text(value,
-            style: const TextStyle(
-                color: _dark, fontSize: 15,
-                fontWeight: FontWeight.w600, fontFamily: 'Satoshi')),
-      ],
     );
   }
 }

@@ -24,7 +24,7 @@ class CustomBottomNav extends StatelessWidget {
             height: 64,
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
+              color: Colors.black,
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
@@ -75,7 +75,7 @@ class CustomBottomNav extends StatelessWidget {
               height: 64,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A),
+                color: Colors.black,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
