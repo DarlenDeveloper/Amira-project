@@ -70,6 +70,10 @@ Use these constants. Do not introduce new colors without a reason.
   for primary icons.
 - Directional chevrons (e.g. `Iconsax.arrow_right_3`) are an exception; they
   stay as line glyphs since there's no filled equivalent.
+- **Circular icon chips:** Iconsax bold glyphs have inconsistent side bearings
+  and do not center reliably inside a circular background. For icons placed in a
+  round chip/badge, use Material's rounded filled icons (`Icons.*_rounded`),
+  which sit dead-center. Iconsax bold remains the default everywhere else.
 
 ## Code Conventions
 

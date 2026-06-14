@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'notifications_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -82,7 +83,7 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     _buildUserCard(),
                     const SizedBox(height: 24),
-                    ..._sections.map((s) => _buildSection(s)),
+                    ..._sections.map((s) => _buildSection(context, s)),
                   ],
                 ),
               ),
@@ -152,7 +153,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(_MenuSection section) {
+  Widget _buildSection(BuildContext context, _MenuSection section) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -184,7 +185,18 @@ class ProfileScreen extends StatelessWidget {
           child: Column(
             children: [
               for (int i = 0; i < section.entries.length; i++) ...[
-                _MenuTile(entry: section.entries[i], onTap: () {}),
+                _MenuTile(
+                  entry: section.entries[i],
+                  onTap: () {
+                    if (section.entries[i].label == 'Notifications') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(),
+                        ),
+                      );
+                    }
+                  },
+                ),
                 if (i != section.entries.length - 1)
                   const Padding(
                     padding: EdgeInsets.only(left: 56),

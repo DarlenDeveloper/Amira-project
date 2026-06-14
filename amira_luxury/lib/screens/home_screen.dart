@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart';
 
 const _bg = Color(0xFFEFEFE9);
 const _white = Colors.white;
@@ -288,21 +289,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    );
+                  },
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Iconsax.notification5, color: _dark, size: 22),
                   ),
-                  child: const Icon(Iconsax.notification5, color: _dark, size: 22),
                 ),
                 Positioned(
                   top: 8,
@@ -592,6 +600,15 @@ class _RecommendCard extends StatelessWidget {
               height: 80,
               fit: BoxFit.cover,
               cacheWidth: 200,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (wasSynchronouslyLoaded) return child;
+                return AnimatedOpacity(
+                  opacity: frame == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                  child: child,
+                );
+              },
             ),
           ),
           const SizedBox(width: 14),
