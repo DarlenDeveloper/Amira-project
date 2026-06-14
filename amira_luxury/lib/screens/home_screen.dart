@@ -35,8 +35,7 @@ final List<Map<String, String>> _featuredCards = [
     'desc': 'Durable wood-plastic composite',
   },
   {
-    // TODO: replace with dedicated PVC Wall Panel image (currently using WPC as a stand-in).
-    'image': '$_specialitiesDir/wpc wall panel.jpeg',
+    'image': '$_specialitiesDir/pvc wall panel.jpeg',
     'tag': 'SPECIALITY',
     'name': 'PVC Wall Panel',
     'desc': 'Lightweight, easy-fit wall finish',
