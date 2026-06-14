@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/visual_studio_screen.dart';
+import 'screens/ai_agent_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
 void main() {
@@ -44,7 +45,7 @@ class _MainNavigatorState extends State<MainNavigator> {
     const HomeScreen(),
     const ExploreScreen(),
     const VisualStudioScreen(),
-    const PlaceholderScreen(title: 'AI Agent'),
+    const AIAgentScreen(),
   ];
 
   void _onNavTap(int index) {
