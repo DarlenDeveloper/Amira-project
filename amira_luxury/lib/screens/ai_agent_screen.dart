@@ -20,6 +20,15 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   final FocusNode _focusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   AnimationController? _borderAnimationController;
+  
+  // Typewriter animation
+  String _displayedText = '';
+  int _currentTextIndex = 0;
+  final List<String> _typewriterTexts = [
+    'Amira Agent',
+    'Your luxury interior design assistant',
+    'Ask me anything about Amira collections, design ideas, or personalized recommendations',
+  ];
 
   @override
   void initState() {
@@ -28,6 +37,45 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     _focusNode.addListener(() {
       setState(() {}); // Rebuild when focus changes
     });
+    // Start typewriter animation after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startTypewriter();
+    });
+  }
+
+  void _startTypewriter() {
+    if (!mounted) return;
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _typeText();
+      }
+    });
+  }
+
+  void _typeText() {
+    if (!mounted) return;
+    
+    final currentText = _typewriterTexts[_currentTextIndex];
+    if (_displayedText.length < currentText.length) {
+      setState(() {
+        _displayedText = currentText.substring(0, _displayedText.length + 1);
+      });
+      // Vary speed: faster for spaces, slower for letters
+      final delay = _displayedText.isNotEmpty && currentText[_displayedText.length - 1] == ' ' ? 30 : 80;
+      Future.delayed(Duration(milliseconds: delay), _typeText);
+    } else {
+      // Finished typing current text, move to next after pause
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        if (_currentTextIndex < _typewriterTexts.length - 1) {
+          setState(() {
+            _currentTextIndex++;
+            _displayedText = '';
+          });
+          Future.delayed(const Duration(milliseconds: 300), _typeText);
+        }
+      });
+    }
   }
 
   void _initAnimationController() {
@@ -132,8 +180,46 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                   ),
                 ),
               ] else ...[
-                // Spacer to push search bar down, leaving room above bottom nav
-                const Expanded(child: SizedBox()),
+                // Typewriter animation welcome state
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Typewriter text display
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_displayedText.isNotEmpty)
+                                Flexible(
+                                  child: Text(
+                                    _displayedText,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: _currentTextIndex == 0 ? 32 : (_currentTextIndex == 1 ? 18 : 15),
+                                      fontWeight: _currentTextIndex == 0 ? FontWeight.w700 : (_currentTextIndex == 1 ? FontWeight.w600 : FontWeight.w400),
+                                      color: _currentTextIndex == 0 ? _dark : (_currentTextIndex == 1 ? _dark : _grey),
+                                      fontFamily: 'Satoshi',
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              // Blinking cursor
+                              if (_displayedText.length < _typewriterTexts[_currentTextIndex].length)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 2),
+                                  child: _BlinkingCursor(),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
 
               // Search bar positioned just above bottom nav when no messages
@@ -300,6 +386,110 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// Suggestion Chip Widget
+class _SuggestionChip extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SuggestionChip({
+    required this.text,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: _white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _lightGrey, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: _gold,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _dark,
+                  fontFamily: 'Satoshi',
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: _grey,
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// Blinking Cursor Widget
+class _BlinkingCursor extends StatefulWidget {
+  @override
+  State<_BlinkingCursor> createState() => _BlinkingCursorState();
+}
+
+class _BlinkingCursorState extends State<_BlinkingCursor> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: const Text(
+        '|',
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w300,
+          color: _gold,
+          fontFamily: 'Satoshi',
+        ),
       ),
     );
   }

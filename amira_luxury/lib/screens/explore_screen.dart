@@ -122,12 +122,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       margin: const EdgeInsets.only(right: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
-                        color: isActive ? _gold : _white,
+                        color: isActive ? _gold : _white.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: isActive ? _gold : _lightGrey,
-                          width: 1.5,
-                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: Text(
@@ -193,9 +196,9 @@ class _MaterialCardState extends State<_MaterialCard> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
