@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1027356115889",
+    "project_id": "amira-interiors",
+    "storage_bucket": "amira-interiors.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1027356115889:android:fad7c25cbb0e1b03b4f390",
+        "android_client_info": {
+          "package_name": "com.amiraluxury.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU6QIx6DRCTB4XMXunt4giuhDkRkfv82A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

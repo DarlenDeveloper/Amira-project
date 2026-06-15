@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>1027356115889-ddr3q6698ri4jeb3ls2u5tqgd7tl1976.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1027356115889-ddr3q6698ri4jeb3ls2u5tqgd7tl1976</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCd9uT5_Uhledl2uJgiAAOVAmXcdXOrKBA</string>
+	<key>GCM_SENDER_ID</key>
+	<string>1027356115889</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.amiraluxury.mobile</string>
+	<key>PROJECT_ID</key>
+	<string>amira-interiors</string>
+	<key>STORAGE_BUCKET</key>
+	<string>amira-interiors.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:1027356115889:ios:35f3ea3c45de1815b4f390</string>
+</dict>
+</plist>

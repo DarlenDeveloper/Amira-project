@@ -1,4 +1,4 @@
-package com.example.amira_luxury
+package com.amiraluxury.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
