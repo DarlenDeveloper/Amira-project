@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../main.dart';
+import 'login_screen.dart';
 
 const _dark = Color(0xFF2A2A2A);
 const _white = Colors.white;
@@ -138,9 +138,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _finish() {
-    // TODO: route to auth once those screens land. For now, enter the app.
+    // Onboarding complete → begin auth.
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainNavigator()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 

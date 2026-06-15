@@ -37,6 +37,7 @@ dependencies:
   iconsax: ^0.0.8
   flutter_card_swiper: ^7.0.1
   flutter_svg: ^2.3.0
+  country_flags: ^4.1.2
 
 dev_dependencies:
   flutter_test:

@@ -88,22 +88,22 @@ final List<Map<String, String>> _recommendations = [
   {
     'image': 'assets/images/inside-weather-Uxqlfigh6oE-unsplash.jpg',
     'type': 'Living Room Design',
-    'price': 'KES 2,400,000',
-    'location': 'Nairobi, KE',
+    'price': 'UGX 68,000,000',
+    'location': 'Kampala, UG',
     'size': '60 m²',
   },
   {
     'image': 'assets/images/franco-debartolo-KLEF4bIFvr0-unsplash.jpg',
     'type': 'Master Suite Finish',
-    'price': 'KES 1,800,000',
-    'location': 'Karen, NBI',
+    'price': 'UGX 51,000,000',
+    'location': 'Kololo, KLA',
     'size': '45 m²',
   },
   {
     'image': 'assets/images/toa-heftiba-x8f214cQsQk-unsplash.jpg',
     'type': 'Open Kitchen Concept',
-    'price': 'KES 3,100,000',
-    'location': 'Westlands, NBI',
+    'price': 'UGX 88,000,000',
+    'location': 'Nakasero, KLA',
     'size': '80 m²',
   },
 ];
