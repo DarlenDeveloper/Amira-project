@@ -6,7 +6,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:country_flags/country_flags.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
-import 'otp_screen.dart';
 
 const _dark = Color(0xFF2A2A2A);
 const _white = Colors.white;
@@ -95,15 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get _canContinue {
     if (!_identifierFilled) return false;
-    // Phone uses OTP — no password. Sign-up still collects name + address.
-    if (_usePhone) {
-      if (_isSignup) {
-        return _nameController.text.trim().isNotEmpty &&
-            _addressController.text.trim().isNotEmpty;
-      }
-      return true;
-    }
-    // Email path keeps the password flow (Firebase requires 6+ characters).
+    // Both phone and email use a password (Firebase requires 6+ characters).
     if (_passwordController.text.length < 6) return false;
     if (_isSignup) {
       return _confirmController.text == _passwordController.text &&
@@ -236,24 +227,35 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _continueWithPhone() async {
-    // Hand off to the OTP screen, which sends + verifies the SMS code.
-    final phoneNumber = '${_country.dial}${_phoneController.text.trim()}';
-    final outcome = await Navigator.of(context).push<OtpOutcome>(
-      MaterialPageRoute(
-        builder: (_) => OtpScreen(
-          phoneNumber: phoneNumber,
-          isSignup: _isSignup,
-          name: _isSignup ? _nameController.text.trim() : null,
-          address: _isSignup ? _addressController.text.trim() : null,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    if (outcome == OtpOutcome.verified) {
-      _enterApp();
-    } else if (outcome == OtpOutcome.noAccount) {
-      // Logged in with a number that has no account → suggest signing up.
-      _showSignupSuggestion();
+    setState(() => _loading = true);
+    try {
+      final phone = '${_country.dial}${_phoneController.text.trim()}';
+      final password = _passwordController.text;
+      if (_isSignup) {
+        await AuthService.instance.signUpWithPhonePassword(
+          phone: phone,
+          password: password,
+          name: _nameController.text.trim(),
+          address: _addressController.text.trim(),
+        );
+      } else {
+        await AuthService.instance.signInWithPhonePassword(
+          phone: phone,
+          password: password,
+        );
+      }
+      if (mounted) _enterApp();
+    } on FirebaseAuthException catch (e) {
+      if (!_isSignup &&
+          (e.code == 'user-not-found' || e.code == 'invalid-credential')) {
+        _showSignupSuggestion();
+      } else {
+        _showMessage(authErrorMessage(e));
+      }
+    } catch (_) {
+      _showMessage('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -449,8 +451,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _usePhone ? _phoneField() : _emailField(),
-                    // Email keeps a password; phone verifies via SMS code instead.
-                    if (!_usePhone && _identifierFilled)
+                    // Password appears once the identifier is entered
+                    // (phone and email both use a password now).
+                    if (_identifierFilled)
                       _reveal(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -460,22 +463,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-                    // Sign up details. Confirm-password is email-only;
-                    // name + address apply to both phone and email.
+                    // Sign up adds confirm password + name + address.
                     if (_identifierFilled && _isSignup)
                       _reveal(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (!_usePhone) ...[
-                              const SizedBox(height: 14),
-                              _textPill(
-                                icon: Iconsax.lock_1,
-                                hint: 'confirm password',
-                                controller: _confirmController,
-                                obscure: true,
-                              ),
-                            ],
+                            const SizedBox(height: 14),
+                            _textPill(
+                              icon: Iconsax.lock_1,
+                              hint: 'confirm password',
+                              controller: _confirmController,
+                              obscure: true,
+                            ),
                             const SizedBox(height: 14),
                             _textPill(
                               icon: Iconsax.user,
@@ -763,8 +763,8 @@ class _LoginScreenState extends State<LoginScreen> {
       hint: 'password',
       controller: _passwordController,
       obscure: _obscurePassword,
-      // "I forgot" only makes sense when logging in
-      trailing: _isSignup ? null : _forgotPill(),
+      // "I forgot" only applies to email login — phone has no reset address.
+      trailing: (_isSignup || _usePhone) ? null : _forgotPill(),
     );
   }
 

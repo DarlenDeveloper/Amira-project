@@ -58,7 +58,13 @@ export default function ExplorePage() {
         </main>
       </div>
 
-      {selected && <ProductDetail data={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <ProductDetail
+          data={selected}
+          onClose={() => setSelected(null)}
+          onSelect={setSelected}
+        />
+      )}
     </div>
   );
 }

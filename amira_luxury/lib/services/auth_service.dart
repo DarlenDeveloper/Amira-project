@@ -49,11 +49,14 @@ class AuthService {
       password: password,
     );
     await cred.user?.updateDisplayName(name);
-    await _upsertProfile(
-      cred.user!,
-      name: name,
-      email: email,
-      address: address,
+    await _writeProfileSafely(
+      () => _upsertProfile(
+        cred.user!,
+        name: name,
+        email: email,
+        address: address,
+        isNew: true,
+      ),
     );
     return cred;
   }
@@ -95,92 +98,61 @@ class AuthService {
     final credential = GoogleAuthProvider.credential(idToken: idToken);
     final userCred = await _auth.signInWithCredential(credential);
 
-    await _upsertProfile(
-      userCred.user!,
-      name: account.displayName,
-      email: account.email,
-      photoUrl: userCred.user?.photoURL,
+    await _writeProfileSafely(
+      () => _upsertProfile(
+        userCred.user!,
+        name: account.displayName,
+        email: account.email,
+        photoUrl: userCred.user?.photoURL,
+        isNew: userCred.additionalUserInfo?.isNewUser ?? false,
+      ),
     );
     return userCred;
   }
 
-  // ── Phone (OTP) ───────────────────────────────────────────────────────────────
-  /// Kicks off SMS verification for [phoneNumber] (E.164, e.g. +256700123456).
-  ///
-  /// On Android the code can be auto-retrieved, in which case [onAutoVerified]
-  /// fires with a ready-to-use credential and no manual entry is needed.
-  Future<void> verifyPhone({
-    required String phoneNumber,
-    required void Function(String verificationId) onCodeSent,
-    required void Function(FirebaseAuthException e) onFailed,
-    required void Function(PhoneAuthCredential credential) onAutoVerified,
+  // ── Phone (number + password) ───────────────────────────────────────────────
+  // Firebase email/password auth doesn't take phone numbers directly, so a phone
+  // is mapped to a stable internal credential email (digits@phone domain). The
+  // user only ever sees their phone number; the real E.164 value is saved on the
+  // profile. No SMS / OTP involved.
+  static const String _phoneEmailDomain = 'phone.amira.app';
+
+  static String _phoneToEmail(String phoneE164) {
+    final digits = phoneE164.replaceAll(RegExp(r'[^0-9]'), '');
+    return '$digits@$_phoneEmailDomain';
+  }
+
+  Future<UserCredential> signInWithPhonePassword({
+    required String phone,
+    required String password,
   }) {
-    return _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: onAutoVerified,
-      verificationFailed: onFailed,
-      codeSent: (verificationId, _) => onCodeSent(verificationId),
-      codeAutoRetrievalTimeout: (_) {},
-      timeout: const Duration(seconds: 60),
+    return _auth.signInWithEmailAndPassword(
+      email: _phoneToEmail(phone),
+      password: password,
     );
   }
 
-  /// Completes phone sign-in from a manually entered [smsCode].
-  Future<UserCredential> confirmSmsCode({
-    required String verificationId,
-    required String smsCode,
-    required bool isSignup,
-    String? name,
-    String? address,
-  }) {
-    final credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode,
-    );
-    return signInWithPhoneCredential(
-      credential,
-      isSignup: isSignup,
-      name: name,
-      address: address,
-    );
-  }
-
-  /// Completes phone sign-in from a [PhoneAuthCredential] (manual or
-  /// auto-retrieved) and writes the profile.
-  ///
-  /// Phone auth has no native "login vs signup" — verifying always signs in and
-  /// auto-creates the user if new. So when [isSignup] is false and Firebase just
-  /// created the account, we treat it as "no account for this number": the
-  /// freshly-created user is removed and a `no-account-for-phone` error is thrown
-  /// so the UI can nudge the caller to sign up instead.
-  Future<UserCredential> signInWithPhoneCredential(
-    PhoneAuthCredential credential, {
-    required bool isSignup,
-    String? name,
-    String? address,
+  Future<UserCredential> signUpWithPhonePassword({
+    required String phone,
+    required String password,
+    required String name,
+    required String address,
   }) async {
-    final userCred = await _auth.signInWithCredential(credential);
-    final isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
-
-    if (!isSignup && isNewUser) {
-      // Logged in with a number that has no account — undo the auto-created user.
-      await userCred.user?.delete();
-      throw FirebaseAuthException(
-        code: 'no-account-for-phone',
-        message: 'No account found for this number.',
-      );
-    }
-
-    if (name != null && name.isNotEmpty) {
-      await userCred.user?.updateDisplayName(name);
-    }
-    await _upsertProfile(
-      userCred.user!,
-      name: name,
-      address: address,
-      phone: userCred.user?.phoneNumber,
+    final cred = await _auth.createUserWithEmailAndPassword(
+      email: _phoneToEmail(phone),
+      password: password,
     );
-    return userCred;
+    await cred.user?.updateDisplayName(name);
+    await _writeProfileSafely(
+      () => _upsertProfile(
+        cred.user!,
+        name: name,
+        phone: phone,
+        address: address,
+        isNew: true,
+      ),
+    );
+    return cred;
   }
 
   // ── Session ───────────────────────────────────────────────────────────────────
@@ -193,7 +165,8 @@ class AuthService {
 
   // ── Profile (Firestore) ─────────────────────────────────────────────────────────
   /// Creates or merges the `users/{uid}` document. Existing fields are never
-  /// overwritten with nulls (see [AppUser.toMap]).
+  /// overwritten with nulls (see [AppUser.toMap]). The internal phone-credential
+  /// email is treated as "no email" so it never shows up in the UI.
   Future<void> _upsertProfile(
     User user, {
     String? name,
@@ -201,22 +174,37 @@ class AuthService {
     String? phone,
     String? address,
     String? photoUrl,
-  }) async {
-    final doc = _users.doc(user.uid);
+    bool isNew = false,
+  }) {
+    final resolvedEmail = email ?? user.email;
+    final isInternalEmail =
+        resolvedEmail != null && resolvedEmail.endsWith('@$_phoneEmailDomain');
     final profile = AppUser(
       uid: user.uid,
       name: name,
-      email: email ?? user.email,
+      email: isInternalEmail ? null : resolvedEmail,
       phone: phone ?? user.phoneNumber,
       address: address,
       photoUrl: photoUrl,
     );
-    final snapshot = await doc.get();
-    await doc.set({
+    // No pre-read: a blocking get() can hang while the device is briefly
+    // offline. createdAt is written only on first creation (callers pass isNew).
+    return _users.doc(user.uid).set({
       ...profile.toMap(),
-      if (!snapshot.exists) 'createdAt': FieldValue.serverTimestamp(),
+      if (isNew) 'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Runs a profile write without letting it block the auth flow. Firestore
+  /// persists the write locally and syncs when connectivity returns, so a slow
+  /// or briefly-offline backend never stalls sign-in/sign-up.
+  Future<void> _writeProfileSafely(Future<void> Function() write) async {
+    try {
+      await write().timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Timed out or transient error — the write stays queued offline.
+    }
   }
 
   Stream<AppUser?> profileStream(String uid) {
