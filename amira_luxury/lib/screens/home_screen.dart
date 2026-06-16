@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import '../models/app_user.dart';
+import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
 
@@ -255,33 +258,55 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   Widget _buildHeader() {
+    final user = FirebaseAuth.instance.currentUser;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Good morning',
-              style: TextStyle(
-                fontSize: 14,
-                color: _grey,
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Satoshi',
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Jane Doe',
-              style: TextStyle(
-                fontSize: 20,
-                color: _dark,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Satoshi',
-              ),
-            ),
-          ],
+        StreamBuilder<AppUser?>(
+          stream:
+              user == null ? null : AuthService.instance.profileStream(user.uid),
+          builder: (context, snapshot) {
+            final profile = snapshot.data;
+            final fullName = (profile?.name?.trim().isNotEmpty ?? false)
+                ? profile!.name!.trim()
+                : (user?.displayName?.trim().isNotEmpty ?? false)
+                    ? user!.displayName!.trim()
+                    : 'there';
+            // Show just the first name to keep the greeting warm and compact.
+            final firstName = fullName.split(' ').first;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _greeting(),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: _grey,
+                    fontWeight: FontWeight.w400,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  firstName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    color: _dark,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         Row(
           children: [
@@ -332,23 +357,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
               },
-              child: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+              child: StreamBuilder<AppUser?>(
+                stream: FirebaseAuth.instance.currentUser == null
+                    ? null
+                    : AuthService.instance
+                        .profileStream(FirebaseAuth.instance.currentUser!.uid),
+                builder: (context, snapshot) {
+                  final photoUrl = snapshot.data?.photoUrl ??
+                      FirebaseAuth.instance.currentUser?.photoURL;
+                  final ImageProvider avatar =
+                      (photoUrl != null && photoUrl.isNotEmpty)
+                          ? NetworkImage(photoUrl)
+                          : const AssetImage('assets/images/user_avatar.jpg')
+                              as ImageProvider;
+                  return Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                      image: DecorationImage(image: avatar, fit: BoxFit.cover),
                     ),
-                  ],
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/user_avatar.jpg'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],

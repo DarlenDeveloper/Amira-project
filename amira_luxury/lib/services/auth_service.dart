@@ -204,6 +204,38 @@ class AuthService {
           (doc) => doc.exists ? AppUser.fromDoc(doc) : null,
         );
   }
+
+  Future<AppUser?> fetchProfile(String uid) async {
+    final doc = await _users.doc(uid).get();
+    return doc.exists ? AppUser.fromDoc(doc) : null;
+  }
+
+  /// Updates editable profile fields for the current user. Only non-null values
+  /// are written (merge), and the auth displayName is kept in sync with [name].
+  Future<void> updateProfile({
+    String? name,
+    String? address,
+    String? phone,
+    String? photoUrl,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'You need to be signed in to update your profile.',
+      );
+    }
+    if (name != null && name.isNotEmpty) {
+      await user.updateDisplayName(name);
+    }
+    await _users.doc(user.uid).set({
+      if (name != null) 'name': name,
+      if (address != null) 'address': address,
+      if (phone != null) 'phone': phone,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 }
 
 /// Maps a [FirebaseAuthException] to a warm, human-readable message that fits

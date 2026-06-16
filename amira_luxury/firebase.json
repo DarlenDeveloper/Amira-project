@@ -1,1 +1,33 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"amira-interiors","appId":"1:1027356115889:android:fad7c25cbb0e1b03b4f390","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"amira-interiors","appId":"1:1027356115889:ios:35f3ea3c45de1815b4f390","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"amira-interiors","configurations":{"android":"1:1027356115889:android:fad7c25cbb0e1b03b4f390","ios":"1:1027356115889:ios:35f3ea3c45de1815b4f390"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "amira-interiors",
+          "appId": "1:1027356115889:android:fad7c25cbb0e1b03b4f390",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "amira-interiors",
+          "appId": "1:1027356115889:ios:35f3ea3c45de1815b4f390",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "amira-interiors",
+          "configurations": {
+            "android": "1:1027356115889:android:fad7c25cbb0e1b03b4f390",
+            "ios": "1:1027356115889:ios:35f3ea3c45de1815b4f390"
+          }
+        }
+      }
+    }
+  }
+}

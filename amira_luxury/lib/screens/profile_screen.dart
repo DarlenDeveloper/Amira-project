@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
+import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 
@@ -322,7 +323,14 @@ class ProfileScreen extends StatelessWidget {
                 _MenuTile(
                   entry: section.entries[i],
                   onTap: () {
-                    if (section.entries[i].label == 'Notifications') {
+                    final label = section.entries[i].label;
+                    if (label == 'Manage Profile') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                    } else if (label == 'Notifications') {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const NotificationsScreen(),
