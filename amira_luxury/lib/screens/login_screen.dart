@@ -1,9 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:country_flags/country_flags.dart';
 import '../main.dart';
+import '../services/auth_service.dart';
+import 'otp_screen.dart';
 
 const _dark = Color(0xFF2A2A2A);
 const _white = Colors.white;
@@ -60,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final bool _obscurePassword = true;
   _Country _country = _countries.first; // default Uganda
   bool _bgCached = false;
+  bool _loading = false;
 
   @override
   void didChangeDependencies() {
@@ -91,7 +95,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get _canContinue {
     if (!_identifierFilled) return false;
-    if (_passwordController.text.length < 4) return false;
+    // Phone uses OTP — no password. Sign-up still collects name + address.
+    if (_usePhone) {
+      if (_isSignup) {
+        return _nameController.text.trim().isNotEmpty &&
+            _addressController.text.trim().isNotEmpty;
+      }
+      return true;
+    }
+    // Email path keeps the password flow (Firebase requires 6+ characters).
+    if (_passwordController.text.length < 6) return false;
     if (_isSignup) {
       return _confirmController.text == _passwordController.text &&
           _nameController.text.trim().isNotEmpty &&
@@ -177,10 +190,89 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _continue() {
-    if (!_canContinue) return;
+    if (!_canContinue || _loading) return;
     FocusScope.of(context).unfocus();
-    // UI-only: proceed straight into the app.
-    _enterApp();
+    if (_usePhone) {
+      _continueWithPhone();
+    } else {
+      _continueWithEmail();
+    }
+  }
+
+  Future<void> _continueWithEmail() async {
+    setState(() => _loading = true);
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      if (_isSignup) {
+        await AuthService.instance.signUpWithEmail(
+          email: email,
+          password: password,
+          name: _nameController.text.trim(),
+          address: _addressController.text.trim(),
+        );
+      } else {
+        await AuthService.instance.signInWithEmail(
+          email: email,
+          password: password,
+        );
+      }
+      if (mounted) _enterApp();
+    } on FirebaseAuthException catch (e) {
+      _showMessage(authErrorMessage(e));
+    } catch (_) {
+      _showMessage('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _continueWithPhone() async {
+    // Hand off to the OTP screen, which sends + verifies the SMS code.
+    final phoneNumber = '${_country.dial}${_phoneController.text.trim()}';
+    final verified = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => OtpScreen(
+          phoneNumber: phoneNumber,
+          isSignup: _isSignup,
+          name: _isSignup ? _nameController.text.trim() : null,
+          address: _isSignup ? _addressController.text.trim() : null,
+        ),
+      ),
+    );
+    if (verified == true && mounted) _enterApp();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_loading) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _loading = true);
+    try {
+      final cred = await AuthService.instance.signInWithGoogle();
+      // Null means the user dismissed the Google sheet — stay put silently.
+      if (cred != null && mounted) _enterApp();
+    } on FirebaseAuthException catch (e) {
+      _showMessage(authErrorMessage(e));
+    } catch (_) {
+      _showMessage('Google sign-in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontFamily: 'Satoshi'),
+        ),
+        backgroundColor: _dark,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 2200),
+      ),
+    );
   }
 
   void _enterApp() {
@@ -313,8 +405,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _usePhone ? _phoneField() : _emailField(),
-                    // Password appears once the identifier is entered
-                    if (_identifierFilled)
+                    // Email keeps a password; phone verifies via SMS code instead.
+                    if (!_usePhone && _identifierFilled)
                       _reveal(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -324,19 +416,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-                    // Sign up adds confirm password + name + address
+                    // Sign up details. Confirm-password is email-only;
+                    // name + address apply to both phone and email.
                     if (_identifierFilled && _isSignup)
                       _reveal(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 14),
-                            _textPill(
-                              icon: Iconsax.lock_1,
-                              hint: 'confirm password',
-                              controller: _confirmController,
-                              obscure: true,
-                            ),
+                            if (!_usePhone) ...[
+                              const SizedBox(height: 14),
+                              _textPill(
+                                icon: Iconsax.lock_1,
+                                hint: 'confirm password',
+                                controller: _confirmController,
+                                obscure: true,
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             _textPill(
                               icon: Iconsax.user,
@@ -394,7 +489,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  _ArrowButton(enabled: _canContinue, onTap: _continue),
+                  _ArrowButton(
+                    enabled: _canContinue && !_loading,
+                    busy: _loading,
+                    onTap: _continue,
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
@@ -419,7 +518,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _socialPill() {
     return GestureDetector(
-      onTap: _enterApp, // UI-only: social sign-in stub
+      onTap: _signInWithGoogle,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -627,18 +726,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _forgotPill() {
     return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Password reset link sent.',
-              style: TextStyle(fontFamily: 'Satoshi'),
-            ),
-            backgroundColor: _dark,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(milliseconds: 1400),
-          ),
-        );
+      onTap: () async {
+        final email = _emailController.text.trim();
+        if (!email.contains('@') || !email.contains('.')) {
+          _showMessage('Enter your email above first, then tap "I forgot".');
+          return;
+        }
+        try {
+          await AuthService.instance.sendPasswordReset(email);
+          _showMessage('Password reset link sent to $email.');
+        } on FirebaseAuthException catch (e) {
+          _showMessage(authErrorMessage(e));
+        } catch (_) {
+          _showMessage('Couldn\'t send reset link. Please try again.');
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
@@ -664,8 +765,13 @@ class _LoginScreenState extends State<LoginScreen> {
 // ── Dark circular arrow proceed button ──────────────────────────────────────────
 class _ArrowButton extends StatelessWidget {
   final bool enabled;
+  final bool busy;
   final VoidCallback onTap;
-  const _ArrowButton({required this.enabled, required this.onTap});
+  const _ArrowButton({
+    required this.enabled,
+    required this.onTap,
+    this.busy = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -674,7 +780,7 @@ class _ArrowButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
-        opacity: enabled ? 1 : 0.45,
+        opacity: enabled || busy ? 1 : 0.45,
         child: Container(
           width: 56,
           height: 56,
@@ -683,7 +789,17 @@ class _ArrowButton extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: const Icon(Icons.arrow_forward_rounded, color: _white, size: 24),
+          child: busy
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation(_white),
+                  ),
+                )
+              : const Icon(Icons.arrow_forward_rounded,
+                  color: _white, size: 24),
         ),
       ),
     );

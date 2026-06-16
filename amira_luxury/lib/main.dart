@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/visual_studio_screen.dart';
@@ -7,8 +10,11 @@ import 'screens/ai_agent_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -35,7 +41,51 @@ class AmiraApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
       ),
-      home: const OnboardingScreen(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+/// Decides the entry screen on cold start: signed-in users land in the app,
+/// everyone else starts at onboarding. In-session transitions (login / logout)
+/// are handled explicitly by their screens.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _BrandSplash();
+        }
+        if (snapshot.hasData) {
+          return const MainNavigator();
+        }
+        return const OnboardingScreen();
+      },
+    );
+  }
+}
+
+/// Minimal warm splash shown while the first auth state resolves. Mirrors the
+/// native splash (white field + logo) so the handoff is seamless.
+class _BrandSplash extends StatelessWidget {
+  const _BrandSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Image.asset(
+          'assets/icon/app_icon_foreground.png',
+          width: 160,
+          height: 160,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 }

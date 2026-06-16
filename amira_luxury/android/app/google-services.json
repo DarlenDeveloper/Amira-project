@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1027356115889-ifp3d0j5qh1gt9an29ojppmodch83l51.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.amiraluxury.mobile",
+            "certificate_hash": "3b879d518711703b4d787c1b857620c34ed0f2d9"
+          }
+        },
+        {
           "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1027356115889-ddr3q6698ri4jeb3ls2u5tqgd7tl1976.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.amiraluxury.mobile"
+              }
             }
           ]
         }

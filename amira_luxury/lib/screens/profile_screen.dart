@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
+import '../models/app_user.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 import 'notifications_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -84,6 +88,7 @@ class ProfileScreen extends StatelessWidget {
                     _buildUserCard(),
                     const SizedBox(height: 24),
                     ..._sections.map((s) => _buildSection(context, s)),
+                    _buildLogoutButton(context),
                   ],
                 ),
               ),
@@ -95,8 +100,92 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildUserCard() {
+    final user = FirebaseAuth.instance.currentUser;
+    return StreamBuilder<AppUser?>(
+      stream: user == null ? null : AuthService.instance.profileStream(user.uid),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+
+        final profileName = profile?.name?.trim();
+        final authName = user?.displayName?.trim();
+        final name = (profileName != null && profileName.isNotEmpty)
+            ? profileName
+            : (authName != null && authName.isNotEmpty)
+                ? authName
+                : 'Amira Member';
+
+        final subtitle = profile?.email ??
+            user?.email ??
+            profile?.phone ??
+            user?.phoneNumber ??
+            '';
+
+        final photoUrl = profile?.photoUrl ?? user?.photoURL;
+        final ImageProvider avatar = (photoUrl != null && photoUrl.isNotEmpty)
+            ? NetworkImage(photoUrl)
+            : const AssetImage('assets/images/user_avatar.jpg') as ImageProvider;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(image: avatar, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: _dark,
+                        fontFamily: 'Satoshi',
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: _grey,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _white,
         borderRadius: BorderRadius.circular(20),
@@ -108,48 +197,93 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                image: AssetImage('assets/images/user_avatar.jpg'),
-                fit: BoxFit.cover,
+      child: GestureDetector(
+        onTap: () => _confirmSignOut(context),
+        behavior: HitTestBehavior.opaque,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Center(
+                  child: Icon(Iconsax.logout5, color: Color(0xFFB23A3A), size: 22),
+                ),
+              ),
+              SizedBox(width: 14),
+              Text(
+                'Log Out',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFB23A3A),
+                  fontFamily: 'Satoshi',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Log out?',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _dark,
+            fontFamily: 'Satoshi',
+          ),
+        ),
+        content: const Text(
+          'You\'ll need to sign in again to access your account.',
+          style: TextStyle(
+            fontWeight: FontWeight.w400,
+            color: _grey,
+            fontFamily: 'Satoshi',
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: _grey,
+                fontFamily: 'Satoshi',
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Jane Doe',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _dark,
-                    fontFamily: 'Satoshi',
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'jane.doe@gmail.com',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: _grey,
-                    fontFamily: 'Satoshi',
-                  ),
-                ),
-              ],
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Color(0xFFB23A3A),
+                fontFamily: 'Satoshi',
+              ),
             ),
           ),
         ],
       ),
+    );
+
+    if (shouldSignOut != true) return;
+    await AuthService.instance.signOut();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
   }
 

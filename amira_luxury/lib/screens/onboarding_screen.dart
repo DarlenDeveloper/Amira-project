@@ -97,6 +97,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           context,
         );
       }
+      // Also warm the login screen's full-resolution backdrop now, so the
+      // hand-off into auth doesn't flash an undecoded image.
+      precacheImage(
+        const AssetImage('assets/images/kam-idris-hYb7kbu4x7E-unsplash.jpg'),
+        context,
+      );
       _imagesCached = true;
     }
   }
@@ -138,9 +144,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _finish() {
-    // Onboarding complete → begin auth.
+    // Onboarding complete → begin auth. Fade across so the login backdrop
+    // (now precached) eases in rather than snapping.
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => const LoginScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
     );
   }
 
