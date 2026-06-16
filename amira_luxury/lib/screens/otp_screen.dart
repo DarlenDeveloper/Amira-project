@@ -14,6 +14,18 @@ const _gold = Color(0xFFB5945A);
 const _bgImage = 'assets/images/kam-idris-hYb7kbu4x7E-unsplash.jpg';
 const _codeLength = 6;
 
+/// Result handed back to the caller when the OTP screen closes.
+enum OtpOutcome {
+  /// Number verified and the user is signed in.
+  verified,
+
+  /// Login attempt for a number that has no account — caller should suggest signup.
+  noAccount,
+
+  /// User backed out / changed number.
+  cancelled,
+}
+
 /// SMS code verification, styled to match the frosted-glass login card.
 ///
 /// Pops `true` once the phone number is verified and the user is signed in.
@@ -93,6 +105,7 @@ class _OtpScreenState extends State<OtpScreen> {
         // Android auto-retrieval — sign in without manual entry.
         await _completeWith(() => AuthService.instance.signInWithPhoneCredential(
               credential,
+              isSignup: widget.isSignup,
               name: widget.name,
               address: widget.address,
             ));
@@ -106,12 +119,13 @@ class _OtpScreenState extends State<OtpScreen> {
     await _completeWith(() => AuthService.instance.confirmSmsCode(
           verificationId: _verificationId!,
           smsCode: _code,
+          isSignup: widget.isSignup,
           name: widget.name,
           address: widget.address,
         ));
   }
 
-  /// Runs a sign-in action, manages the spinner, and pops `true` on success.
+  /// Runs a sign-in action, manages the spinner, and closes on completion.
   Future<void> _completeWith(Future<UserCredential> Function() action) async {
     setState(() {
       _verifying = true;
@@ -119,9 +133,15 @@ class _OtpScreenState extends State<OtpScreen> {
     });
     try {
       await action();
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(OtpOutcome.verified);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      // Login attempt for an unregistered number → hand back to login to
+      // suggest signing up.
+      if (e.code == 'no-account-for-phone') {
+        Navigator.of(context).pop(OtpOutcome.noAccount);
+        return;
+      }
       setState(() {
         _verifying = false;
         _error = authErrorMessage(e);
@@ -222,7 +242,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.of(context).maybePop(false),
+                    onTap: () => Navigator.of(context).maybePop(OtpOutcome.cancelled),
                     behavior: HitTestBehavior.opaque,
                     child: const Text(
                       'Change number',

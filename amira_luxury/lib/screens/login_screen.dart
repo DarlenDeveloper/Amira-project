@@ -219,7 +219,15 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (mounted) _enterApp();
     } on FirebaseAuthException catch (e) {
-      _showMessage(authErrorMessage(e));
+      // Logging in with a credential that has no account → nudge to sign up.
+      // (With email-enumeration protection on, Firebase returns
+      // 'invalid-credential' rather than 'user-not-found'.)
+      if (!_isSignup &&
+          (e.code == 'user-not-found' || e.code == 'invalid-credential')) {
+        _showSignupSuggestion();
+      } else {
+        _showMessage(authErrorMessage(e));
+      }
     } catch (_) {
       _showMessage('Something went wrong. Please try again.');
     } finally {
@@ -230,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _continueWithPhone() async {
     // Hand off to the OTP screen, which sends + verifies the SMS code.
     final phoneNumber = '${_country.dial}${_phoneController.text.trim()}';
-    final verified = await Navigator.of(context).push<bool>(
+    final outcome = await Navigator.of(context).push<OtpOutcome>(
       MaterialPageRoute(
         builder: (_) => OtpScreen(
           phoneNumber: phoneNumber,
@@ -240,7 +248,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-    if (verified == true && mounted) _enterApp();
+    if (!mounted) return;
+    if (outcome == OtpOutcome.verified) {
+      _enterApp();
+    } else if (outcome == OtpOutcome.noAccount) {
+      // Logged in with a number that has no account → suggest signing up.
+      _showSignupSuggestion();
+    }
   }
 
   Future<void> _signInWithGoogle() async {
@@ -273,6 +287,36 @@ class _LoginScreenState extends State<LoginScreen> {
         duration: const Duration(milliseconds: 2200),
       ),
     );
+  }
+
+  // Shown when a login finds no matching account. Offers a one-tap switch into
+  // sign-up, keeping whatever email/phone they already typed.
+  void _showSignupSuggestion() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text(
+            'No account found with those details. New to Amira?',
+            style: TextStyle(fontFamily: 'Satoshi'),
+          ),
+          backgroundColor: _dark,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'Sign up',
+            textColor: _gold,
+            onPressed: () {
+              setState(() {
+                _isSignup = true;
+                _passwordController.clear();
+                _confirmController.clear();
+              });
+            },
+          ),
+        ),
+      );
   }
 
   void _enterApp() {

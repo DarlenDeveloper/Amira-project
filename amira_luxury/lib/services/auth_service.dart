@@ -129,6 +129,7 @@ class AuthService {
   Future<UserCredential> confirmSmsCode({
     required String verificationId,
     required String smsCode,
+    required bool isSignup,
     String? name,
     String? address,
   }) {
@@ -138,6 +139,7 @@ class AuthService {
     );
     return signInWithPhoneCredential(
       credential,
+      isSignup: isSignup,
       name: name,
       address: address,
     );
@@ -145,12 +147,30 @@ class AuthService {
 
   /// Completes phone sign-in from a [PhoneAuthCredential] (manual or
   /// auto-retrieved) and writes the profile.
+  ///
+  /// Phone auth has no native "login vs signup" — verifying always signs in and
+  /// auto-creates the user if new. So when [isSignup] is false and Firebase just
+  /// created the account, we treat it as "no account for this number": the
+  /// freshly-created user is removed and a `no-account-for-phone` error is thrown
+  /// so the UI can nudge the caller to sign up instead.
   Future<UserCredential> signInWithPhoneCredential(
     PhoneAuthCredential credential, {
+    required bool isSignup,
     String? name,
     String? address,
   }) async {
     final userCred = await _auth.signInWithCredential(credential);
+    final isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
+
+    if (!isSignup && isNewUser) {
+      // Logged in with a number that has no account — undo the auto-created user.
+      await userCred.user?.delete();
+      throw FirebaseAuthException(
+        code: 'no-account-for-phone',
+        message: 'No account found for this number.',
+      );
+    }
+
     if (name != null && name.isNotEmpty) {
       await userCred.user?.updateDisplayName(name);
     }
