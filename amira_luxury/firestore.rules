@@ -13,7 +13,7 @@ service cloud.firestore {
     // A user may read and write only their own profile document. The uid in the
     // path must match the authenticated uid.
     match /users/{uid} {
-      allow read: if isOwner(uid);
+      allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid) && isValidProfile();
       allow update: if isOwner(uid) && isValidProfile();
       allow delete: if false; // profiles are not user-deletable for now
@@ -53,6 +53,26 @@ service cloud.firestore {
       allow read: if isOwnerOf(resource) || isAdmin();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    // ── Conversations (AI agent threads) ──────────────────────────────────────
+    // User owns their threads; admin reviews all. Messages live in a
+    // subcollection. (App-side conversation writes come in a later phase.)
+    match /conversations/{conversationId} {
+      allow read: if isOwnerOf(resource) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isOwnerOf(resource) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // ── Notifications (admin broadcasts) ──────────────────────────────────────
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

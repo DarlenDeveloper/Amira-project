@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/cart_line.dart';
 import '../services/order_service.dart';
 import '../services/shop_service.dart';
+import '../utils/currency.dart';
 import '../widgets/product_image.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -231,7 +232,7 @@ class CartScreen extends StatelessWidget {
           ),
         ),
         Text(
-          '\$${value.toStringAsFixed(0)}',
+          formatUgx(value),
           style: TextStyle(
             fontSize: isTotal ? 18 : 15,
             fontWeight: FontWeight.w700,
@@ -309,7 +310,7 @@ class _CartTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '\$${item.value.toStringAsFixed(0)} per ${item.unit}',
+                  '${formatUgx(item.value)} per ${item.unit}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -322,7 +323,7 @@ class _CartTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '\$${item.lineTotal.toStringAsFixed(0)}',
+                      formatUgx(item.lineTotal),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

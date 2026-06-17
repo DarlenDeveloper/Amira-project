@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../services/order_service.dart';
+import '../utils/currency.dart';
 import '../widgets/shimmer.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -185,7 +186,7 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${order.total.toStringAsFixed(0)}',
+                formatUgx(order.total),
                 style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,

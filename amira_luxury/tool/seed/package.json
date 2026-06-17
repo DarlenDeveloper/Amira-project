@@ -5,7 +5,8 @@
   "description": "One-off Firestore seeding scripts (admin-authored data).",
   "scripts": {
     "seed:products": "node seed_products.mjs",
-    "seed:portfolio": "node seed_portfolio.mjs"
+    "seed:portfolio": "node seed_portfolio.mjs",
+    "set:admin": "node set_admin.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0"

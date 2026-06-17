@@ -40,7 +40,9 @@ is not used for image display.
 Union of the app's Explore/Home data and the admin catalog fields.
 ```
 name        string   // join key today; "PVC Marble Sheets"
-imageKey    string   // "pvc-marble-sheet" — resolves to bundled asset
+imageKey    string   // "pvc-marble-sheet" — stable slug / id
+imageUrl    string?  // primary image (= images[0]); what the app displays
+images      [string] // ordered gallery of hosted image URLs (admin-managed)
 category    string   // "Wall Panels" | "Marble Sheets" | "Stone" | "Lighting" |
                      // "Flooring" | "Blinds" | "Steel" | "Boards"
 value       number   // unit price, e.g. 56

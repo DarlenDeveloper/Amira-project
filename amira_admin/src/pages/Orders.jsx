@@ -3,24 +3,38 @@ import PageHeader from '../components/PageHeader.jsx';
 import FilterPills from '../components/FilterPills.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { EyeIcon, DotsIcon } from '../components/icons.jsx';
-import { orders, orderStatuses } from '../data/orders.js';
+import { useCollection, formatDate } from '../db.js';
 import { money, titleCase } from '../utils.js';
+
+const ORDER_STATUSES = [
+  'pending', 'processing', 'paid', 'shipped', 'delivered', 'cancelled',
+];
 
 export default function Orders() {
   const [filter, setFilter] = useState('all');
+  const { data } = useCollection('orders');
+
+  // Newest first.
+  const orders = useMemo(() => {
+    return [...data].sort((a, b) => {
+      const at = a.createdAt?.toMillis?.() ?? 0;
+      const bt = b.createdAt?.toMillis?.() ?? 0;
+      return bt - at;
+    });
+  }, [data]);
 
   const counts = useMemo(() => {
     const c = {};
-    for (const s of orderStatuses) c[s] = orders.filter((o) => o.status === s).length;
+    for (const s of ORDER_STATUSES) c[s] = orders.filter((o) => o.status === s).length;
     return c;
-  }, []);
+  }, [orders]);
 
-  const total = useMemo(() => orders.reduce((sum, o) => sum + o.total, 0), []);
+  const total = useMemo(() => orders.reduce((sum, o) => sum + (o.total || 0), 0), [orders]);
   const rows = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
 
   const options = [
     { value: 'all', label: 'All' },
-    ...orderStatuses.map((s) => ({ value: s, label: titleCase(s), count: counts[s] })),
+    ...ORDER_STATUSES.map((s) => ({ value: s, label: titleCase(s), count: counts[s] })),
   ];
 
   return (
@@ -49,13 +63,13 @@ export default function Orders() {
           <tbody>
             {rows.map((o) => (
               <tr key={o.id}>
-                <td className="mono">{o.id}</td>
+                <td className="mono">{o.orderId}</td>
                 <td>
                   <div className="cell-strong">{o.customer}</div>
                   <div className="cell-sub">{o.email}</div>
                 </td>
-                <td className="cell-muted">{o.date}</td>
-                <td className="num">{o.items}</td>
+                <td className="cell-muted">{formatDate(o.createdAt)}</td>
+                <td className="num">{o.itemCount}</td>
                 <td><StatusBadge status={o.status} /></td>
                 <td className="num serif-num">{money(o.total)}</td>
                 <td className="right">

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/currency.dart';
+
 /// Availability of a product, mirrors the admin `status` field.
 enum ProductStatus { active, low, out, unknown }
 
@@ -26,6 +28,7 @@ class Product {
   final String name;
   final String imageKey;
   final String? imageUrl;
+  final List<String> images;
   final String category;
   final double value;
   final String unit;
@@ -41,6 +44,7 @@ class Product {
     required this.name,
     required this.imageKey,
     this.imageUrl,
+    this.images = const [],
     required this.category,
     required this.value,
     required this.unit,
@@ -52,8 +56,8 @@ class Product {
     required this.order,
   });
 
-  /// Display price, e.g. "From $56 / sqm".
-  String get priceLabel => 'From \$${value.toStringAsFixed(0)} / $unit';
+  /// Display price, e.g. "From UGX 56 / sqm".
+  String get priceLabel => 'From ${formatUgx(value)} / $unit';
 
   bool get isOutOfStock => status == ProductStatus.out || stock <= 0;
   bool get isLowStock => status == ProductStatus.low;
@@ -65,6 +69,8 @@ class Product {
       name: (data['name'] as String?) ?? '',
       imageKey: (data['imageKey'] as String?) ?? '',
       imageUrl: data['imageUrl'] as String?,
+      images: (data['images'] as List?)?.whereType<String>().toList() ??
+          const [],
       category: (data['category'] as String?) ?? '',
       value: (data['value'] as num?)?.toDouble() ?? 0,
       unit: (data['unit'] as String?) ?? 'unit',
@@ -82,6 +88,7 @@ class Product {
       'name': name,
       'imageKey': imageKey,
       if (imageUrl != null) 'imageUrl': imageUrl,
+      if (images.isNotEmpty) 'images': images,
       'category': category,
       'value': value,
       'unit': unit,

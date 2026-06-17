@@ -78,32 +78,42 @@ profiles, rules for users). Everything else below is dummy data.
 
 ## Admin pages (`amira_admin`)
 
+Firebase wired: `src/firebase.js` (init), `src/db.js` (`useCollection` hook +
+CRUD/storage/format helpers), `src/components/Thumb.jsx` (image / no-image).
+Admin gated by `admin: true` claim (set via `tool/seed/set_admin.mjs`).
+
 ### Auth / shell
-- [ ] Real Firebase admin auth + claim/allowlist gate (`auth.jsx`, `Login.jsx`).
+- [x] Real Firebase admin auth + claim gate (`auth.jsx`, `Login.jsx`, `App.jsx`).
 
-### Products  (`pages/Products.jsx`, `data/products.js`)
-- [ ] CRUD against `products` (create/edit/stock/status/category).
+### Products  (`pages/Products.jsx`)
+- [x] Read live `products` (categories/counts derived from data).
+- [ ] CRUD against `products` (create/edit/stock/status/category, image upload).
 
-### Portfolio  (`pages/Portfolio.jsx`, `data/portfolio.js`)
-- [ ] CRUD against `portfolio` (publish/draft/concept).
+### Portfolio  (`pages/Portfolio.jsx`)
+- [x] Read live `portfolio`; shows product used (not price).
+- [ ] CRUD against `portfolio` (publish/draft/concept, product picker, image upload).
 
 ### Orders  (`pages/Orders.jsx`)
-- [ ] Read all `orders`; advance status through lifecycle.
+- [x] Read all `orders` (live, newest first, status counts/total).
+- [ ] Advance status through lifecycle (write).
 
 ### Appointments  (`pages/Appointments.jsx`)
-- [ ] Read all `appointments`; confirm / complete / cancel.
+- [x] Read all `appointments` (live).
+- [ ] Confirm / complete / cancel + schedule date/time (write).
 
 ### Conversations  (`pages/Conversations.jsx`)
-- [ ] Read `conversations` threads (+ optional admin reply).
+- [x] Read `conversations` threads + messages subcollection (empty until app writes).
+- [ ] Admin reply (write) — with Gemini phase.
 
 ### Customers  (`pages/Customers.jsx`)
-- [ ] Read `users` + aggregate `orders` count / spend.
+- [x] Read `users` + aggregate `orders` count / spend.
 
 ### Notifications  (`pages/Notifications.jsx`)
+- [x] Read live `notifications`.
 - [ ] Compose/send → write `notifications` (type, audience, body).
 
 ### Overview  (`pages/Overview.jsx`)
-- [ ] Dashboard metrics from real collections.
+- [x] Dashboard metrics from real collections.
 
 ---
 

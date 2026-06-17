@@ -3,6 +3,7 @@ import '../models/product.dart';
 import '../services/appointment_service.dart';
 import '../services/order_service.dart';
 import '../services/shop_service.dart';
+import '../utils/currency.dart';
 import '../widgets/product_image.dart';
 import 'visual_studio_screen.dart';
 
@@ -160,7 +161,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
                     child: Text(
-                      '\$${product.value.toStringAsFixed(0)} / ${product.unit}',
+                      '${formatUgx(product.value)} / ${product.unit}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
@@ -257,7 +258,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '\$${_total.toStringAsFixed(0)}',
+                    formatUgx(_total),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
