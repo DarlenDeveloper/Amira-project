@@ -57,17 +57,20 @@ updatedAt   ts
 
 ### `portfolio/{portfolioId}`  — admin-authored
 ```
-title       string   // "Living Room Design" (app shows as "type")
-imageKey    string
+title       string   // "Living Room Design" (app shows as the project label)
+imageUrl    string?  // admin-uploaded; "no image" placeholder when absent
 room        string    // "Living Room" | "Bedroom" | "Kitchen" | "Office" ...
 location    string    // "Kampala, UG"
 size        string    // "60 m²"
-price       string    // "UGX 68,000,000" (display string)
+productId   string    // the Amira product used on the project (ref to products)
+productName string    // denormalised product name — shown where price used to be
 status      string    // "published" | "draft" | "concept"
+order       number?
 createdAt   ts
 updatedAt   ts
 ```
-App reads **only `status == "published"`**.
+App reads **only `status == "published"`**. Per spec, the app shows the
+**product used**, not a price.
 
 ### `notifications/{notificationId}`  — admin-authored (broadcast)
 ```

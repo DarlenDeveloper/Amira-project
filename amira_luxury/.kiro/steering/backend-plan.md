@@ -31,11 +31,11 @@ profiles, rules for users). Everything else below is dummy data.
 ## App pages (`amira_luxury`)
 
 ### Home  (`home_screen.dart`)
-- [ ] Featured card **swiper section above "Our Portfolio"** (`_featuredCards`)
-      — **leave static**, bundled assets, no wiring. This is the only part of
-      Home that stays as-is.
-- [ ] "Our Portfolio" strip (`_recommendations`) → read `portfolio` where
-      `status == published`.
+- [x] Featured card **swiper section above "Our Portfolio"** (`_featuredCards`)
+      — **left static**, bundled assets, no wiring. Only part of Home unchanged.
+- [x] "Our Portfolio" strip (`_recommendations`) → reads `portfolio` where
+      `status == published`. Shows the **product used** (not a price), per spec.
+      Remote images via `imageUrl` (no-image placeholder); shimmer while loading.
 - [ ] Notification bell badge → live unread count (per-user state).
 - [ ] Search bar "Ask Amira agent" → routes into AI Agent (later phase).
 

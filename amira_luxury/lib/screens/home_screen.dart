@@ -3,7 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import '../models/app_user.dart';
+import '../models/portfolio.dart';
 import '../services/auth_service.dart';
+import '../services/portfolio_service.dart';
+import '../widgets/product_image.dart';
+import '../widgets/shimmer.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
 
@@ -12,10 +16,8 @@ const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
 const _lightGrey = Color(0xFFD8D8D8);
-const _orange = Color(0xFFE8621A);
-const _olive = Color(0xFF556B4A);
 
-// Amira's 11 product specialities — drives the Home portfolio swiper.
+// Amira's 11 product specialities — drives the Home featured swiper (static).
 const _specialitiesDir = 'assets/images/company specilialities';
 
 final List<Map<String, String>> _featuredCards = [
@@ -87,37 +89,14 @@ final List<Map<String, String>> _featuredCards = [
   },
 ];
 
-final List<Map<String, String>> _recommendations = [
-  {
-    'image': 'assets/images/inside-weather-Uxqlfigh6oE-unsplash.jpg',
-    'type': 'Living Room Design',
-    'price': 'UGX 68,000,000',
-    'location': 'Kampala, UG',
-    'size': '60 m²',
-  },
-  {
-    'image': 'assets/images/franco-debartolo-KLEF4bIFvr0-unsplash.jpg',
-    'type': 'Master Suite Finish',
-    'price': 'UGX 51,000,000',
-    'location': 'Kololo, KLA',
-    'size': '45 m²',
-  },
-  {
-    'image': 'assets/images/toa-heftiba-x8f214cQsQk-unsplash.jpg',
-    'type': 'Open Kitchen Concept',
-    'price': 'UGX 88,000,000',
-    'location': 'Nakasero, KLA',
-    'size': '80 m²',
-  },
-];
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   final CardSwiperController _swiperController = CardSwiperController();
   bool _imagesCached = false;
@@ -146,18 +125,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _precacheImages() {
-    // Precache at the SAME pixel size the cards render with (their cacheWidth),
-    // so the warmed cache entry matches what's displayed and images appear
-    // instantly instead of decoding on first paint.
+    // Precache the static featured cards at their render size so they paint
+    // instantly. Portfolio images are remote and load on demand.
     for (var card in _featuredCards) {
       precacheImage(
         ResizeImage(AssetImage(card['image']!), width: 600),
-        context,
-      );
-    }
-    for (var rec in _recommendations) {
-      precacheImage(
-        ResizeImage(AssetImage(rec['image']!), width: 200),
         context,
       );
     }
@@ -184,76 +156,109 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _buildHeader(),
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _buildSearchBar(),
-                    ),
-            const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _buildHeader(),
+                ),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildSearchBar(),
+                ),
+                const SizedBox(height: 32),
 
-            // Card swiper — 45% of screen height
-            SizedBox(
-              height: screenHeight * 0.45,
-              child: CardSwiper(
-                controller: _swiperController,
-                cardsCount: _featuredCards.length,
-                onSwipe: (previousIndex, currentIndex, direction) {
-                  setState(() {
-                    _currentIndex = currentIndex ?? 0;
-                  });
-                  return true;
-                },
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                allowedSwipeDirection: const AllowedSwipeDirection.symmetric(horizontal: true),
-                scale: 0.92,
-                numberOfCardsDisplayed: 3,
-                backCardOffset: const Offset(0, -30), // Stack cards upward
-                cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                  return _FeaturedCard(data: _featuredCards[index]);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 26),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'Our Portfolio',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: _dark,
-                      fontFamily: 'Satoshi',
-                    ),
+                // Card swiper — 45% of screen height (static featured cards)
+                SizedBox(
+                  height: screenHeight * 0.45,
+                  child: CardSwiper(
+                    controller: _swiperController,
+                    cardsCount: _featuredCards.length,
+                    onSwipe: (previousIndex, currentIndex, direction) {
+                      setState(() {
+                        _currentIndex = currentIndex ?? 0;
+                      });
+                      return true;
+                    },
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    allowedSwipeDirection:
+                        const AllowedSwipeDirection.symmetric(horizontal: true),
+                    scale: 0.92,
+                    numberOfCardsDisplayed: 3,
+                    backCardOffset: const Offset(0, -30),
+                    cardBuilder: (context, index, percentThresholdX,
+                        percentThresholdY) {
+                      return _FeaturedCard(data: _featuredCards[index]);
+                    },
                   ),
-                  Icon(Icons.more_vert, color: _grey, size: 22),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
+                ),
 
-            SizedBox(
-              height: 110,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _recommendations.length,
-                itemBuilder: (_, i) => _RecommendCard(data: _recommendations[i]),
-              ),
-            ),
-            const SizedBox(height: 100),
+                const SizedBox(height: 26),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'Our Portfolio',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _dark,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                      Icon(Icons.more_vert, color: _grey, size: 22),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                _buildPortfolioStrip(),
+                const SizedBox(height: 100),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPortfolioStrip() {
+    return SizedBox(
+      height: 110,
+      child: StreamBuilder<List<Portfolio>>(
+        stream: PortfolioService.instance.watchPublished(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const _PortfolioSkeleton();
+          }
+          final items = snapshot.data ?? const <Portfolio>[];
+          if (items.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'No portfolio projects yet.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _grey,
+                    fontWeight: FontWeight.w400,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+              ),
+            );
+          }
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: items.length,
+            itemBuilder: (_, i) => _RecommendCard(item: items[i]),
+          );
+        },
       ),
     );
   }
@@ -271,8 +276,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         StreamBuilder<AppUser?>(
-          stream:
-              user == null ? null : AuthService.instance.profileStream(user.uid),
+          stream: user == null
+              ? null
+              : AuthService.instance.profileStream(user.uid),
           builder: (context, snapshot) {
             final profile = snapshot.data;
             final fullName = (profile?.name?.trim().isNotEmpty ?? false)
@@ -280,7 +286,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 : (user?.displayName?.trim().isNotEmpty ?? false)
                     ? user!.displayName!.trim()
                     : 'there';
-            // Show just the first name to keep the greeting warm and compact.
             final firstName = fullName.split(' ').first;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +321,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen()),
                     );
                   },
                   child: Container(
@@ -333,7 +339,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                       ],
                     ),
-                    child: const Icon(Iconsax.notification5, color: _dark, size: 22),
+                    child: const Icon(Iconsax.notification5,
+                        color: _dark, size: 22),
                   ),
                 ),
                 Positioned(
@@ -398,20 +405,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return AnimatedBuilder(
       animation: _borderAnimationController,
       builder: (context, child) {
-        // Apply easeInOutCubic for smooth acceleration/deceleration
-        final curvedValue = Curves.easeInOutCubic.transform(_borderAnimationController.value);
-        
+        final curvedValue = Curves.easeInOutCubic
+            .transform(_borderAnimationController.value);
+
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
             gradient: SweepGradient(
               colors: const [
-                Color(0xFFB5945A), // gold
-                Color(0xFFFFFFFF), // white
-                Color(0xFF2A2A2A), // black
-                Color(0xFFB5945A), // gold
-                Color(0xFFE8C88E), // lighter gold
-                Color(0xFFB5945A), // back to gold
+                Color(0xFFB5945A),
+                Color(0xFFFFFFFF),
+                Color(0xFF2A2A2A),
+                Color(0xFFB5945A),
+                Color(0xFFE8C88E),
+                Color(0xFFB5945A),
               ],
               stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
               transform: GradientRotation(curvedValue * 2 * 3.14159),
@@ -426,22 +433,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
             child: Row(
               children: [
-                // Image attachment icon
                 GestureDetector(
                   onTap: () {},
-                  child: const Icon(Iconsax.gallery5, color: Color(0xFF8B8B8B), size: 24),
+                  child: const Icon(Iconsax.gallery5,
+                      color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 16),
-                // Voice icon
                 GestureDetector(
                   onTap: () {},
-                  child: const Icon(Iconsax.microphone_25, color: Color(0xFF8B8B8B), size: 24),
+                  child: const Icon(Iconsax.microphone_25,
+                      color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 14),
-                // Input field
                 const Expanded(
                   child: TextField(
-                    style: TextStyle(fontFamily: 'Satoshi', fontSize: 15, fontWeight: FontWeight.w500, color: _dark),
+                    style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: _dark),
                     decoration: InputDecoration(
                       hintText: 'Ask Amira agent',
                       hintStyle: TextStyle(
@@ -457,7 +467,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Send button
                 Container(
                   width: 44,
                   height: 44,
@@ -465,7 +474,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     color: Color(0xFF1A1A1A),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.arrow_upward_rounded,
+                      color: Colors.white, size: 22),
                 ),
               ],
             ),
@@ -475,6 +485,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  // ignore: unused_element
   Widget _buildDots() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -495,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 }
 
-// ── Featured Card ─────────────────────────────────────────────────────────────
+// ── Featured Card (static) ──────────────────────────────────────────────────
 class _FeaturedCard extends StatelessWidget {
   final Map<String, String> data;
   const _FeaturedCard({required this.data});
@@ -524,7 +535,8 @@ class _FeaturedCard extends StatelessWidget {
                 data['image']!,
                 fit: BoxFit.cover,
                 cacheWidth: 600,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                frameBuilder:
+                    (context, child, frame, wasSynchronouslyLoaded) {
                   if (wasSynchronouslyLoaded) return child;
                   return AnimatedOpacity(
                     opacity: frame == null ? 0 : 1,
@@ -534,71 +546,67 @@ class _FeaturedCard extends StatelessWidget {
                   );
                 },
               ),
-
-            // Tag
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _white.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  data['name']!,
-                  style: const TextStyle(
-                    color: _dark,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Satoshi',
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _white.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    data['name']!,
+                    style: const TextStyle(
+                      color: _dark,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Satoshi',
+                    ),
                   ),
                 ),
               ),
-            ),
-
-            // Heart
-            Positioned(
-              top: 16,
-              right: 16,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: _white.withOpacity(0.88),
-                  shape: BoxShape.circle,
+              Positioned(
+                top: 16,
+                right: 16,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _white.withOpacity(0.88),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Iconsax.heart5, size: 17, color: _dark),
                 ),
-                child: const Icon(Iconsax.heart5, size: 17, color: _dark),
               ),
-            ),
-
-            // Bottom strip
-            Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: _white.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      data['desc']!,
-                      style: const TextStyle(
-                        color: _dark,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Satoshi',
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _white.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        data['desc']!,
+                        style: const TextStyle(
+                          color: _dark,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Satoshi',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               ),
             ],
           ),
@@ -608,10 +616,12 @@ class _FeaturedCard extends StatelessWidget {
   }
 }
 
-// ── Recommendation Card ───────────────────────────────────────────────────────
+// ── Portfolio Card ──────────────────────────────────────────────────────────
+// Mirrors the original recommendation card; the slot that showed price now
+// shows the product used on the project (per spec).
 class _RecommendCard extends StatelessWidget {
-  final Map<String, String> data;
-  const _RecommendCard({required this.data});
+  final Portfolio item;
+  const _RecommendCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -623,28 +633,24 @@ class _RecommendCard extends StatelessWidget {
         color: _white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.asset(
-              data['image']!,
+            child: SizedBox(
               width: 80,
               height: 80,
-              fit: BoxFit.cover,
-              cacheWidth: 200,
-              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                if (wasSynchronouslyLoaded) return child;
-                return AnimatedOpacity(
-                  opacity: frame == null ? 0 : 1,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                  child: child,
-                );
-              },
+              child: ProductImage(
+                imageUrl: item.imageUrl,
+                cacheWidth: 200,
+                placeholderIconSize: 20,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -653,37 +659,92 @@ class _RecommendCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(data['type']!,
-                    style: const TextStyle(
-                        fontSize: 13, color: _grey,
-                        fontWeight: FontWeight.w400, fontFamily: 'Satoshi')),
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: _grey,
+                      fontWeight: FontWeight.w400,
+                      fontFamily: 'Satoshi'),
+                ),
                 const SizedBox(height: 4),
-                Text(data['price']!,
-                    style: const TextStyle(
-                        fontSize: 16, color: _dark,
-                        fontWeight: FontWeight.w700, fontFamily: 'Satoshi')),
+                Text(
+                  item.productName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      color: _dark,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Satoshi'),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Iconsax.location5, size: 13, color: _grey),
-                        const SizedBox(width: 4),
-                        Text(data['location']!,
-                            style: const TextStyle(
-                                fontSize: 12, color: _grey, fontFamily: 'Satoshi', fontWeight: FontWeight.w400)),
-                      ],
+                    Flexible(
+                      child: Row(
+                        children: [
+                          const Icon(Iconsax.location5, size: 13, color: _grey),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              item.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: _grey,
+                                  fontFamily: 'Satoshi',
+                                  fontWeight: FontWeight.w400),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    Text(data['size']!,
-                        style: const TextStyle(
-                            fontSize: 12, color: _grey, fontFamily: 'Satoshi', fontWeight: FontWeight.w400)),
+                    const SizedBox(width: 8),
+                    Text(
+                      item.size,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: _grey,
+                          fontFamily: 'Satoshi',
+                          fontWeight: FontWeight.w400),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Portfolio loading skeleton ──────────────────────────────────────────────
+class _PortfolioSkeleton extends StatelessWidget {
+  const _PortfolioSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final cardWidth = MediaQuery.of(context).size.width * 0.75;
+    return Shimmer(
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: 3,
+        itemBuilder: (_, __) => Container(
+          width: cardWidth,
+          margin: const EdgeInsets.only(right: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE6E6E0),
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
       ),
     );
   }
