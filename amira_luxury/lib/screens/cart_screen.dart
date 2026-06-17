@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/cart_line.dart';
+import '../services/order_service.dart';
+import '../services/shop_service.dart';
+import '../widgets/product_image.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -6,75 +10,10 @@ const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
 const _gold = Color(0xFFB5945A);
 
-const _specialitiesDir = 'assets/images/company specilialities';
-
-class CartItem {
-  final String image;
-  final String name;
-  final String unit;
-  final double price;
-  int qty;
-
-  CartItem({
-    required this.image,
-    required this.name,
-    required this.unit,
-    required this.price,
-    this.qty = 1,
-  });
-}
-
-class CartScreen extends StatefulWidget {
+class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
-  @override
-  State<CartScreen> createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  final List<CartItem> _items = [
-    CartItem(
-      image: '$_specialitiesDir/pvc marble sheet.jpeg',
-      name: 'PVC Marble Sheets',
-      unit: 'per sqm',
-      price: 56,
-      qty: 2,
-    ),
-    CartItem(
-      image: '$_specialitiesDir/bamboo wall panel.jpeg',
-      name: 'Bamboo Wall Panel',
-      unit: 'per sqm',
-      price: 42,
-      qty: 3,
-    ),
-    CartItem(
-      image: '$_specialitiesDir/lights.jpeg',
-      name: 'Lights',
-      unit: 'per unit',
-      price: 25,
-      qty: 4,
-    ),
-  ];
-
-  double get _subtotal =>
-      _items.fold(0, (sum, item) => sum + item.price * item.qty);
-
   static const double _delivery = 30;
-
-  void _changeQty(int index, int delta) {
-    setState(() {
-      final newQty = _items[index].qty + delta;
-      if (newQty <= 0) {
-        _items.removeAt(index);
-      } else {
-        _items[index].qty = newQty;
-      }
-    });
-  }
-
-  void _remove(int index) {
-    setState(() => _items.removeAt(index));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +40,8 @@ class _CartScreenState extends State<CartScreen> {
                           color: _white,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.arrow_back, color: _dark, size: 20),
+                        child: const Icon(Icons.arrow_back,
+                            color: _dark, size: 20),
                       ),
                     ),
                   ),
@@ -119,22 +59,35 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             Expanded(
-              child: _items.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (_, i) => _CartTile(
-                        item: _items[i],
-                        onIncrement: () => _changeQty(i, 1),
-                        onDecrement: () => _changeQty(i, -1),
-                        onRemove: () => _remove(i),
-                      ),
-                    ),
-            ),
+              child: StreamBuilder<List<CartLine>>(
+                stream: ShopService.instance.watchCart(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                          color: _gold, strokeWidth: 2),
+                    );
+                  }
+                  final items = snapshot.data ?? const <CartLine>[];
+                  if (items.isEmpty) return _buildEmptyState();
 
-            if (_items.isNotEmpty) _buildSummary(),
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (_, i) => _CartTile(item: items[i]),
+                        ),
+                      ),
+                      _buildSummary(context, items),
+                    ],
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -153,7 +106,8 @@ class _CartScreenState extends State<CartScreen> {
               color: Color(0xFFF5EFE3),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.shopping_bag_rounded, color: _gold, size: 38),
+            child:
+                const Icon(Icons.shopping_bag_rounded, color: _gold, size: 38),
           ),
           const SizedBox(height: 20),
           const Text(
@@ -180,8 +134,9 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildSummary() {
-    final total = _subtotal + _delivery;
+  Widget _buildSummary(BuildContext context, List<CartLine> items) {
+    final subtotal = items.fold<double>(0, (sum, i) => sum + i.lineTotal);
+    final total = subtotal + _delivery;
     return Container(
       padding: EdgeInsets.fromLTRB(
         20, 20, 20, 20 + MediaQuery.of(context).padding.bottom,
@@ -200,7 +155,7 @@ class _CartScreenState extends State<CartScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _summaryRow('Subtotal', _subtotal),
+          _summaryRow('Subtotal', subtotal),
           const SizedBox(height: 10),
           _summaryRow('Delivery', _delivery),
           const Padding(
@@ -210,7 +165,33 @@ class _CartScreenState extends State<CartScreen> {
           _summaryRow('Total', total, isTotal: true),
           const SizedBox(height: 18),
           GestureDetector(
-            onTap: () {},
+            // Checkout → create an order from the cart, then clear it.
+            onTap: () async {
+              try {
+                await OrderService.instance.placeOrderFromCart(items);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Order placed',
+                        style: TextStyle(fontFamily: 'Satoshi')),
+                    backgroundColor: _dark,
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(milliseconds: 1400),
+                  ),
+                );
+                Navigator.of(context).maybePop();
+              } catch (_) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Couldn\'t place the order. Please try again.',
+                        style: TextStyle(fontFamily: 'Satoshi')),
+                    backgroundColor: _dark,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
@@ -264,17 +245,9 @@ class _CartScreenState extends State<CartScreen> {
 }
 
 class _CartTile extends StatelessWidget {
-  final CartItem item;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
-  final VoidCallback onRemove;
+  final CartLine item;
 
-  const _CartTile({
-    required this.item,
-    required this.onIncrement,
-    required this.onDecrement,
-    required this.onRemove,
-  });
+  const _CartTile({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -295,12 +268,14 @@ class _CartTile extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.asset(
-              item.image,
+            child: SizedBox(
               width: 78,
               height: 78,
-              fit: BoxFit.cover,
-              cacheWidth: 200,
+              child: ProductImage(
+                imageUrl: item.imageUrl,
+                cacheWidth: 200,
+                placeholderIconSize: 22,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -326,14 +301,15 @@ class _CartTile extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: onRemove,
+                      onTap: () =>
+                          ShopService.instance.removeFromCart(item.productId),
                       child: const Icon(Icons.close, color: _grey, size: 20),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '\$${item.price.toStringAsFixed(0)} ${item.unit}',
+                  '\$${item.value.toStringAsFixed(0)} per ${item.unit}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
@@ -346,7 +322,7 @@ class _CartTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '\$${(item.price * item.qty).toStringAsFixed(0)}',
+                      '\$${item.lineTotal.toStringAsFixed(0)}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -356,8 +332,10 @@ class _CartTile extends StatelessWidget {
                     ),
                     _QtyStepper(
                       qty: item.qty,
-                      onIncrement: onIncrement,
-                      onDecrement: onDecrement,
+                      onIncrement: () => ShopService.instance
+                          .setQty(item.productId, item.qty + 1),
+                      onDecrement: () => ShopService.instance
+                          .setQty(item.productId, item.qty - 1),
                     ),
                   ],
                 ),

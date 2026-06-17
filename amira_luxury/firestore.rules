@@ -25,9 +25,41 @@ service cloud.firestore {
       }
     }
 
+    // ── Products (catalogue) ─────────────────────────────────────────────────
+    // Admin-authored. Any signed-in user may read; only an admin may write.
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // ── Orders ───────────────────────────────────────────────────────────────
+    // A user creates and reads only their own orders. Admins read all and may
+    // update (e.g. advance status). The owner uid is fixed at create time.
+    match /orders/{orderId} {
+      allow read: if isOwnerOf(resource) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Appointments ──────────────────────────────────────────────────────────
+    match /appointments/{appointmentId} {
+      allow read: if isOwnerOf(resource) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // Doc-level owner check for collections that carry a `uid` field.
+    function isOwnerOf(res) {
+      return isSignedIn() && res.data.uid == request.auth.uid;
     }
 
     function isOwner(uid) {

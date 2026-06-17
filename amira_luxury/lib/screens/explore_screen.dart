@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import '../models/product.dart';
+import '../services/product_service.dart';
+import '../services/shop_service.dart';
+import '../widgets/product_image.dart';
+import '../widgets/shimmer.dart';
 import 'cart_screen.dart';
 import 'item_details_screen.dart';
 
@@ -8,133 +13,6 @@ const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
 const _gold = Color(0xFFB5945A);
-
-// Speciality images live in this folder.
-const _specialitiesDir = 'assets/images/company specilialities';
-
-final List<Map<String, dynamic>> _materials = [
-  {
-    'image': '$_specialitiesDir/pvc marble sheet.jpeg',
-    'name': 'PVC Marble Sheets',
-    'price': 'From \$56 / sqm',
-    'value': 56.0,
-    'unit': 'sqm',
-    'about':
-        'Seamless, high-gloss marble-look sheets that bring timeless elegance to any wall — the beauty of natural stone without the weight or cost.',
-    'badge': 'LUXURY',
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/bamboo wall panel.jpeg',
-    'name': 'Bamboo Wall Panel',
-    'price': 'From \$42 / sqm',
-    'value': 42.0,
-    'unit': 'sqm',
-    'about':
-        'Warm, sustainable bamboo panels that add natural texture and a calm, organic feel to refined interior spaces.',
-    'badge': 'BESTSELLER',
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/wpc wall panel.jpeg',
-    'name': 'WPC Wall Panel',
-    'price': 'From \$38 / sqm',
-    'value': 38.0,
-    'unit': 'sqm',
-    'about':
-        'Durable wood-plastic composite panels — moisture-resistant, low-maintenance, and quietly refined.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/pvc wall panel.jpeg',
-    'name': 'PVC Wall Panel',
-    'price': 'From \$32 / sqm',
-    'value': 32.0,
-    'unit': 'sqm',
-    'about':
-        'Lightweight, easy-to-install PVC panels with a clean finish for fast, elegant wall transformations.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/soft stone.jpeg',
-    'name': 'Soft Stone',
-    'price': 'From \$48 / sqm',
-    'value': 48.0,
-    'unit': 'sqm',
-    'about':
-        'Flexible natural stone veneer that wraps curves and corners with authentic stone character.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/pu stone.jpeg',
-    'name': 'PU Stone',
-    'price': 'From \$45 / sqm',
-    'value': 45.0,
-    'unit': 'sqm',
-    'about':
-        'Lightweight polyurethane stone with realistic texture — the look of rock at a fraction of the weight.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/lights.jpeg',
-    'name': 'Lights',
-    'price': 'From \$25 / unit',
-    'value': 25.0,
-    'unit': 'unit',
-    'about':
-        'Curated ambient and accent lighting to set the mood and highlight your finest details.',
-    'badge': 'NEW',
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/Artificial Grass.jpeg',
-    'name': 'Artificial Grass & Carpets',
-    'price': 'From \$18 / sqm',
-    'value': 18.0,
-    'unit': 'sqm',
-    'about':
-        'Soft, luxurious greens and carpets that bring comfort and warmth underfoot, indoors or out.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/steel profile.jpeg',
-    'name': 'Steel Profile',
-    'price': 'From \$12 / m',
-    'value': 12.0,
-    'unit': 'm',
-    'about':
-        'Precision steel profiles and trims for crisp, modern edges and seamless transitions.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/blinds.jpeg',
-    'name': 'Blinds',
-    'price': 'From \$35 / unit',
-    'value': 35.0,
-    'unit': 'unit',
-    'about':
-        'Tailored window treatments that balance privacy, light, and understated luxury.',
-    'badge': null,
-    'isFavorite': false,
-  },
-  {
-    'image': '$_specialitiesDir/block boards.jpeg',
-    'name': 'Block Boards',
-    'price': 'From \$40 / sheet',
-    'value': 40.0,
-    'unit': 'sheet',
-    'about':
-        'Engineered block boards offering strength and a smooth base for premium joinery.',
-    'badge': null,
-    'isFavorite': false,
-  },
-];
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -146,22 +24,6 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   int _selectedFilter = 0;
   final List<String> _filters = ['ALL', 'FLUTED PANELS', 'WPC PANELS'];
-  bool _imagesCached = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_imagesCached) {
-      for (final m in _materials) {
-        // Match the grid's cacheWidth so the warmed entry is reused.
-        precacheImage(
-          ResizeImage(AssetImage(m['image'] as String), width: 500),
-          context,
-        );
-      }
-      _imagesCached = true;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +33,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         children: [
           // Fixed header: title + cart button
           Padding(
-            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 0),
+            padding: EdgeInsets.fromLTRB(
+                20, MediaQuery.of(context).padding.top + 16, 20, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -192,7 +55,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     );
                   },
                   behavior: HitTestBehavior.opaque,
-                  child: const Icon(Icons.shopping_bag_rounded, color: _dark, size: 26),
+                  child: const Icon(Icons.shopping_bag_rounded,
+                      color: _dark, size: 26),
                 ),
               ],
             ),
@@ -213,7 +77,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onTap: () => setState(() => _selectedFilter = i),
                   child: Container(
                     margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
                       color: isActive ? Colors.black : _white.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(24),
@@ -244,18 +109,37 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
           const SizedBox(height: 16),
 
-          // Scrolling material grid
+          // Scrolling material grid (live catalogue)
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 22,
-                childAspectRatio: 0.66,
-              ),
-              itemCount: _materials.length,
-              itemBuilder: (_, i) => _MaterialCard(data: _materials[i]),
+            child: StreamBuilder<List<Product>>(
+              stream: ProductService.instance.watchProducts(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const _SkeletonGrid();
+                }
+                final products = snapshot.data ?? const <Product>[];
+                return StreamBuilder<Set<String>>(
+                  stream: ShopService.instance.watchFavouriteIds(),
+                  builder: (context, favSnap) {
+                    final favourites = favSnap.data ?? const <String>{};
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 22,
+                        childAspectRatio: 0.66,
+                      ),
+                      itemCount: products.length,
+                      itemBuilder: (_, i) => _MaterialCard(
+                        product: products[i],
+                        isFavourite: favourites.contains(products[i].id),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -264,31 +148,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
-class _MaterialCard extends StatefulWidget {
-  final Map<String, dynamic> data;
-  const _MaterialCard({required this.data});
+class _MaterialCard extends StatelessWidget {
+  final Product product;
+  final bool isFavourite;
 
-  @override
-  State<_MaterialCard> createState() => _MaterialCardState();
-}
-
-class _MaterialCardState extends State<_MaterialCard> {
-  late bool _isFavorite;
-
-  @override
-  void initState() {
-    super.initState();
-    _isFavorite = widget.data['isFavorite'];
-  }
+  const _MaterialCard({required this.product, required this.isFavourite});
 
   @override
   Widget build(BuildContext context) {
-    final badge = widget.data['badge'];
+    final badge = product.badge;
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ItemDetailsScreen(data: widget.data),
+            builder: (_) => ItemDetailsScreen(product: product),
           ),
         );
       },
@@ -305,19 +178,9 @@ class _MaterialCardState extends State<_MaterialCard> {
                   child: SizedBox(
                     width: double.infinity,
                     height: double.infinity,
-                    child: Image.asset(
-                      widget.data['image'],
-                      fit: BoxFit.cover,
+                    child: ProductImage(
+                      imageUrl: product.imageUrl,
                       cacheWidth: 500,
-                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded) return child;
-                        return AnimatedOpacity(
-                          opacity: frame == null ? 0 : 1,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOut,
-                          child: child,
-                        );
-                      },
                     ),
                   ),
                 ),
@@ -328,7 +191,8 @@ class _MaterialCardState extends State<_MaterialCard> {
                     top: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
                         color: _white.withOpacity(0.92),
                         borderRadius: BorderRadius.circular(30),
@@ -351,7 +215,9 @@ class _MaterialCardState extends State<_MaterialCard> {
                   top: 12,
                   right: 12,
                   child: GestureDetector(
-                    onTap: () => setState(() => _isFavorite = !_isFavorite),
+                    onTap: () => ShopService.instance
+                        .setFavourite(product.id, !isFavourite),
+                    behavior: HitTestBehavior.opaque,
                     child: Container(
                       width: 38,
                       height: 38,
@@ -360,9 +226,9 @@ class _MaterialCardState extends State<_MaterialCard> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _isFavorite ? Iconsax.heart5 : Iconsax.heart,
+                        isFavourite ? Iconsax.heart5 : Iconsax.heart,
                         size: 19,
-                        color: _isFavorite ? _gold : _dark,
+                        color: isFavourite ? _gold : _dark,
                       ),
                     ),
                   ),
@@ -374,7 +240,7 @@ class _MaterialCardState extends State<_MaterialCard> {
           // Title + price below the image, on the background
           const SizedBox(height: 10),
           Text(
-            widget.data['name'],
+            product.name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -387,7 +253,7 @@ class _MaterialCardState extends State<_MaterialCard> {
           ),
           const SizedBox(height: 4),
           Text(
-            widget.data['price'],
+            product.priceLabel,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -396,6 +262,45 @@ class _MaterialCardState extends State<_MaterialCard> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shimmer placeholder shown while the catalogue loads. Mirrors the real grid's
+/// padding, spacing and card proportions so the swap is seamless.
+class _SkeletonGrid extends StatelessWidget {
+  const _SkeletonGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 22,
+          childAspectRatio: 0.66,
+        ),
+        itemCount: 6,
+        itemBuilder: (_, __) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Expanded(
+              child: SkeletonBox(
+                width: double.infinity,
+                height: double.infinity,
+                borderRadius: BorderRadius.all(Radius.circular(22)),
+              ),
+            ),
+            SizedBox(height: 10),
+            SkeletonBox(width: 120, height: 14),
+            SizedBox(height: 8),
+            SkeletonBox(width: 80, height: 12),
+          ],
+        ),
       ),
     );
   }
