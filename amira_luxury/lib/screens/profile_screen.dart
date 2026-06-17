@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import 'orders_screen.dart';
+import 'appointments_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -328,6 +330,18 @@ class ProfileScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                    } else if (label == 'Orders') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const OrdersScreen(),
+                        ),
+                      );
+                    } else if (label == 'Appointments') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AppointmentsScreen(),
                         ),
                       );
                     } else if (label == 'Notifications') {

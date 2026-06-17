@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { useAuth } from '../auth.jsx';
+import { useAuth, authMessage } from '../auth.jsx';
 
 export default function Login() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!email.includes('@')) {
       setError('Enter a valid email address.');
@@ -18,7 +19,15 @@ export default function Login() {
       return;
     }
     setError('');
-    login(email.trim());
+    setBusy(true);
+    try {
+      await login(email.trim(), password);
+      // On success, AuthProvider flips the app to the dashboard.
+    } catch (err) {
+      setError(authMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -56,9 +65,11 @@ export default function Login() {
 
         {error && <p className="login-error">{error}</p>}
 
-        <button type="submit" className="login-btn">Sign in</button>
+        <button type="submit" className="login-btn" disabled={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
 
-        <p className="login-note">Admin access only. Connects to Firebase auth soon.</p>
+        <p className="login-note">Admin access only.</p>
       </form>
     </div>
   );

@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import PageHeader from '../components/PageHeader.jsx';
-import { notifications } from '../data/notifications.js';
+import { useCollection, formatDate } from '../db.js';
 
 const TYPE_LABEL = {
   collection: 'Collection',
@@ -9,6 +10,16 @@ const TYPE_LABEL = {
 };
 
 export default function Notifications() {
+  const { data } = useCollection('notifications');
+
+  const notifications = useMemo(() => {
+    return [...data].sort((a, b) => {
+      const at = a.sentAt?.toMillis?.() ?? 0;
+      const bt = b.sentAt?.toMillis?.() ?? 0;
+      return bt - at;
+    });
+  }, [data]);
+
   return (
     <div className="page">
       <PageHeader
@@ -30,10 +41,10 @@ export default function Notifications() {
               <div className="notif-foot">
                 <span>To: {n.audience}</span>
                 <span className="dot-sep">·</span>
-                <span>{n.delivered.toLocaleString()} delivered</span>
+                <span>{(n.delivered ?? 0).toLocaleString()} delivered</span>
               </div>
             </div>
-            <span className="notif-time">{n.sent}</span>
+            <span className="notif-time">{formatDate(n.sentAt)}</span>
           </article>
         ))}
       </div>

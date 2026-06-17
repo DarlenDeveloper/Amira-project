@@ -1,26 +1,37 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
-import { orders } from '../data/orders.js';
-import { customers } from '../data/customers.js';
-import { products } from '../data/products.js';
-import { appointments } from '../data/appointments.js';
-import { conversations } from '../data/conversations.js';
+import { useCollection } from '../db.js';
 import { money } from '../utils.js';
 
 export default function Overview() {
-  const revenue = orders.reduce((s, o) => s + o.total, 0);
+  const { data: orders } = useCollection('orders');
+  const { data: users } = useCollection('users');
+  const { data: products } = useCollection('products');
+  const { data: appointments } = useCollection('appointments');
+  const { data: conversations } = useCollection('conversations');
+
+  const revenue = useMemo(
+    () => orders.reduce((s, o) => s + (o.total || 0), 0),
+    [orders],
+  );
   const openConvos = conversations.filter((c) => c.status === 'open').length;
   const pendingAppts = appointments.filter((a) => a.status === 'requested').length;
+  const lowStock = products.filter((p) => p.status && p.status !== 'active').length;
 
   const stats = [
     { label: 'Revenue', value: money(revenue), foot: `${orders.length} orders` },
-    { label: 'Customers', value: customers.length, foot: 'Active accounts' },
+    { label: 'Customers', value: users.length, foot: 'Active accounts' },
     { label: 'Products', value: products.length, foot: 'In catalogue' },
     { label: 'Open chats', value: openConvos, foot: `${conversations.length} total` },
   ];
 
-  const recent = orders.slice(0, 5);
+  const recent = useMemo(() => {
+    return [...orders]
+      .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
+      .slice(0, 5);
+  }, [orders]);
 
   return (
     <div className="page">
@@ -52,7 +63,7 @@ export default function Overview() {
               <tbody>
                 {recent.map((o) => (
                   <tr key={o.id}>
-                    <td className="mono">{o.id}</td>
+                    <td className="mono">{o.orderId}</td>
                     <td className="cell-strong">{o.customer}</td>
                     <td><StatusBadge status={o.status} /></td>
                     <td className="num serif-num">{money(o.total)}</td>
@@ -78,9 +89,7 @@ export default function Overview() {
               <span className="attention-text">Appointment requests to confirm</span>
             </Link>
             <Link to="/products" className="attention-item">
-              <span className="attention-num serif-num">
-                {products.filter((p) => p.status !== 'active').length}
-              </span>
+              <span className="attention-num serif-num">{lowStock}</span>
               <span className="attention-text">Products low or out of stock</span>
             </Link>
           </div>

@@ -3,23 +3,34 @@ import PageHeader from '../components/PageHeader.jsx';
 import FilterPills from '../components/FilterPills.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { EyeIcon, DotsIcon } from '../components/icons.jsx';
-import { appointments, appointmentStatuses } from '../data/appointments.js';
+import { useCollection } from '../db.js';
 import { titleCase } from '../utils.js';
+
+const APPOINTMENT_STATUSES = ['requested', 'confirmed', 'completed', 'cancelled'];
 
 export default function Appointments() {
   const [filter, setFilter] = useState('all');
+  const { data } = useCollection('appointments');
+
+  const appointments = useMemo(() => {
+    return [...data].sort((a, b) => {
+      const at = a.createdAt?.toMillis?.() ?? 0;
+      const bt = b.createdAt?.toMillis?.() ?? 0;
+      return bt - at;
+    });
+  }, [data]);
 
   const counts = useMemo(() => {
     const c = {};
-    for (const s of appointmentStatuses) c[s] = appointments.filter((a) => a.status === s).length;
+    for (const s of APPOINTMENT_STATUSES) c[s] = appointments.filter((a) => a.status === s).length;
     return c;
-  }, []);
+  }, [appointments]);
 
   const rows = filter === 'all' ? appointments : appointments.filter((a) => a.status === filter);
 
   const options = [
     { value: 'all', label: 'All' },
-    ...appointmentStatuses.map((s) => ({ value: s, label: titleCase(s), count: counts[s] })),
+    ...APPOINTMENT_STATUSES.map((s) => ({ value: s, label: titleCase(s), count: counts[s] })),
   ];
 
   return (
@@ -48,14 +59,14 @@ export default function Appointments() {
           <tbody>
             {rows.map((a) => (
               <tr key={a.id}>
-                <td className="mono">{a.id}</td>
+                <td className="mono">{a.appointmentId}</td>
                 <td>
                   <div className="cell-strong">{a.customer}</div>
                   <div className="cell-sub">{a.note}</div>
                 </td>
                 <td className="cell-muted">{a.type}</td>
-                <td className="cell-muted">{a.date}</td>
-                <td className="cell-muted">{a.time}</td>
+                <td className="cell-muted">{a.date || '—'}</td>
+                <td className="cell-muted">{a.time || '—'}</td>
                 <td><StatusBadge status={a.status} /></td>
                 <td className="right">
                   <div className="row-actions">

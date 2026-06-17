@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import '../models/product.dart';
+import '../services/appointment_service.dart';
+import '../services/order_service.dart';
+import '../services/shop_service.dart';
+import '../utils/currency.dart';
+import '../widgets/product_image.dart';
 import 'visual_studio_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -8,8 +14,8 @@ const _grey = Color(0xFF8B8B8B);
 const _gold = Color(0xFFB5945A);
 
 class ItemDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> data;
-  const ItemDetailsScreen({super.key, required this.data});
+  final Product product;
+  const ItemDetailsScreen({super.key, required this.product});
 
   @override
   State<ItemDetailsScreen> createState() => _ItemDetailsScreenState();
@@ -18,9 +24,8 @@ class ItemDetailsScreen extends StatefulWidget {
 class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   int _qty = 1;
 
-  double get _value => (widget.data['value'] as num?)?.toDouble() ?? 0;
-  String get _unit => widget.data['unit'] as String? ?? 'unit';
-  double get _total => _value * _qty;
+  Product get _product => widget.product;
+  double get _total => _product.value * _qty;
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -33,9 +38,47 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     );
   }
 
+  Future<void> _addToCart() async {
+    if (_product.isOutOfStock) {
+      _snack('${_product.name} is currently out of stock');
+      return;
+    }
+    await ShopService.instance.addToCart(_product, qty: _qty);
+    if (!mounted) return;
+    _snack('Added $_qty × ${_product.name} to cart');
+  }
+
+  Future<void> _placeOrder() async {
+    if (_product.isOutOfStock) {
+      _snack('${_product.name} is currently out of stock');
+      return;
+    }
+    try {
+      await OrderService.instance.placeOrderForProduct(_product, _qty);
+      if (!mounted) return;
+      _snack('Order placed for ${_product.name}');
+    } catch (_) {
+      if (!mounted) return;
+      _snack('Couldn\'t place the order. Please try again.');
+    }
+  }
+
+  Future<void> _bookAppointment() async {
+    try {
+      await AppointmentService.instance.requestAppointment(
+        aboutProduct: _product,
+      );
+      if (!mounted) return;
+      _snack('Appointment request sent');
+    } catch (_) {
+      if (!mounted) return;
+      _snack('Couldn\'t send the request. Please try again.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final data = widget.data;
+    final product = _product;
     return Scaffold(
       backgroundColor: _bg,
       body: Column(
@@ -46,7 +89,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image with overlaid back + cart
+                  // Image with overlaid back + favourite + cart
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       16, MediaQuery.of(context).padding.top + 12, 16, 0,
@@ -55,11 +98,12 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(28),
-                          child: Image.asset(
-                            data['image'],
+                          child: SizedBox(
                             height: MediaQuery.of(context).size.height * 0.48,
                             width: double.infinity,
-                            fit: BoxFit.cover,
+                            child: ProductImage(
+                              imageUrl: product.imageUrl,
+                            ),
                           ),
                         ),
                         Positioned(
@@ -76,8 +120,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                               _circleBtn(
                                 icon: Icons.shopping_bag_rounded,
                                 dark: true,
-                                onTap: () =>
-                                    _snack('${data['name']} added to cart'),
+                                onTap: _addToCart,
                               ),
                             ],
                           ),
@@ -94,7 +137,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            data['name'],
+                            product.name,
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
@@ -118,7 +161,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
                     child: Text(
-                      '\$${_value.toStringAsFixed(0)} / $_unit',
+                      '${formatUgx(product.value)} / ${product.unit}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
@@ -132,7 +175,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                     child: Text(
-                      data['about'] ?? '',
+                      product.about,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
@@ -215,7 +258,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '\$${_total.toStringAsFixed(0)}',
+                    formatUgx(_total),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -241,12 +284,12 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          // Order + Book Appointment
+          // Order + Book Appointment (wired in the Orders / Appointments phases)
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () => _snack('Order placed for ${widget.data['name']}'),
+                  onTap: _placeOrder,
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
@@ -270,7 +313,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               const SizedBox(width: 14),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => _snack('Appointment request sent'),
+                  onTap: _bookAppointment,
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(

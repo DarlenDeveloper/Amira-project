@@ -12,7 +12,15 @@ import Appointments from './pages/Appointments.jsx';
 import Notifications from './pages/Notifications.jsx';
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="auth-loading">
+        <span className="login-name">AMIRA</span>
+      </div>
+    );
+  }
 
   if (!user) return <Login />;
 

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>NSCameraUsageDescription</key>
+		<string>Amira uses your camera to capture a photo of your room for the Visual Studio.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Amira needs access to your photos to use a room image in the Visual Studio.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
