@@ -72,6 +72,10 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- The app uses only standard HTTPS/TLS (Firebase) — exempt encryption.
+		     Declaring this skips the export-compliance prompt on every upload. -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<!-- URL scheme for Google Sign-In: must match REVERSED_CLIENT_ID in
 		     GoogleService-Info.plist, or the OAuth redirect can't return to the app. -->
 		<key>CFBundleURLTypes</key>
