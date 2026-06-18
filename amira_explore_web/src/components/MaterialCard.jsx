@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useShop } from '../context/ShopContext.jsx';
 
 // Single material tile: image with badge + heart overlay, then title + price
-// below — mirroring the Flutter `_MaterialCard`.
+// below. The heart is backed by the user's favourites in Firestore.
 export default function MaterialCard({ data, onOpen }) {
-  const [favorite, setFavorite] = useState(false);
+  const { favourites, toggleFavourite } = useShop();
+  const favorite = favourites.has(data.id);
 
   return (
     <article className="material-card" onClick={onOpen}>
@@ -11,6 +12,7 @@ export default function MaterialCard({ data, onOpen }) {
         <img className="card-image" src={data.image} alt={data.name} loading="lazy" />
 
         {data.badge && <span className="card-badge">{data.badge}</span>}
+        {data.outOfStock && <span className="card-soldout">Sold out</span>}
 
         <button
           type="button"
@@ -19,7 +21,7 @@ export default function MaterialCard({ data, onOpen }) {
           aria-pressed={favorite}
           onClick={(e) => {
             e.stopPropagation();
-            setFavorite((v) => !v);
+            toggleFavourite(data.id);
           }}
         >
           <HeartIcon filled={favorite} />

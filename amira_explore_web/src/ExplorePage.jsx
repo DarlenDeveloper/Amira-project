@@ -1,23 +1,58 @@
-import { useState, useEffect } from 'react';
-import { materials, filters } from './data/materials.js';
+import { useState, useEffect, useMemo } from 'react';
+import { useShop } from './context/ShopContext.jsx';
+import { signOut } from './services/auth.js';
 import MaterialCard from './components/MaterialCard.jsx';
 import HeroSection from './components/HeroSection.jsx';
 import CategoryStrip from './components/CategoryStrip.jsx';
 import ProductDetail from './components/ProductDetail.jsx';
+import CartDrawer from './components/CartDrawer.jsx';
+import AuthModal from './components/AuthModal.jsx';
 
-// Web port of the Flutter Explore screen: hero, category strip, filter pills,
-// the 2-column material grid, and a product detail overlay on tap.
+// Web shop home: hero, category strip, filter pills, the live product grid, a
+// product detail overlay, plus the cart drawer and auth/checkout modal.
 export default function ExplorePage() {
-  const [activeFilter, setActiveFilter] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const {
+    products,
+    productsLoading,
+    productsError,
+    categories,
+    cartCount,
+    user,
+    hasAccount,
+  } = useShop();
 
-  // Lock background scroll while the detail overlay is open.
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [selected, setSelected] = useState(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [authState, setAuthState] = useState(null); // { reason, onSuccess } | null
+
+  const filters = useMemo(() => ['All', ...categories], [categories]);
+
+  // Keep the active filter valid as the live category set changes.
   useEffect(() => {
-    document.body.style.overflow = selected ? 'hidden' : '';
+    if (activeFilter !== 'All' && !categories.includes(activeFilter)) {
+      setActiveFilter('All');
+    }
+  }, [categories, activeFilter]);
+
+  const visible = useMemo(
+    () =>
+      activeFilter === 'All'
+        ? products
+        : products.filter((p) => p.category === activeFilter),
+    [products, activeFilter],
+  );
+
+  // Lock background scroll while any overlay is open.
+  useEffect(() => {
+    const open = selected || cartOpen || authState;
+    document.body.style.overflow = open ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selected]);
+  }, [selected, cartOpen, authState]);
+
+  const requireAccount = (reason, onSuccess) => setAuthState({ reason, onSuccess });
 
   return (
     <div className="explore">
@@ -26,45 +61,102 @@ export default function ExplorePage() {
       <div className="explore-inner">
         <header className="explore-header">
           <h1 className="explore-title">Explore</h1>
-          <button type="button" className="cart-button" aria-label="Open cart">
-            <CartIcon />
-          </button>
+          <div className="header-actions">
+            {hasAccount ? (
+              <button type="button" className="account-chip" onClick={() => signOut()} title="Sign out">
+                {(user?.displayName || user?.email || 'Account').split(' ')[0]} · Sign out
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="account-chip"
+                onClick={() => requireAccount('Sign in to track your orders.', null)}
+              >
+                Sign in
+              </button>
+            )}
+            <button type="button" className="cart-button" aria-label="Open cart" onClick={() => setCartOpen(true)}>
+              <CartIcon />
+              {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
+            </button>
+          </div>
         </header>
 
-        <CategoryStrip />
+        <CategoryStrip
+          products={products}
+          active={activeFilter}
+          onSelect={setActiveFilter}
+        />
 
-        <div className="filter-row" role="tablist" aria-label="Filter materials">
-          {filters.map((label, i) => {
-            const active = i === activeFilter;
-            return (
-              <button
-                key={label}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`filter-pill${active ? ' filter-pill--active' : ''}`}
-                onClick={() => setActiveFilter(i)}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        {filters.length > 1 && (
+          <div className="filter-row" role="tablist" aria-label="Filter materials">
+            {filters.map((label) => {
+              const active = label === activeFilter;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`filter-pill${active ? ' filter-pill--active' : ''}`}
+                  onClick={() => setActiveFilter(label)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <main id="explore-grid" className="material-grid">
-          {materials.map((m) => (
-            <MaterialCard key={m.name} data={m} onOpen={() => setSelected(m)} />
-          ))}
+          {productsError ? (
+            <p className="grid-message">
+              We couldn&apos;t load the collection right now. Please refresh in a moment.
+            </p>
+          ) : productsLoading ? (
+            Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)
+          ) : visible.length === 0 ? (
+            <p className="grid-message">No products in this category yet.</p>
+          ) : (
+            visible.map((m) => (
+              <MaterialCard key={m.id} data={m} onOpen={() => setSelected(m)} />
+            ))
+          )}
         </main>
       </div>
 
       {selected && (
         <ProductDetail
           data={selected}
+          related={products}
           onClose={() => setSelected(null)}
           onSelect={setSelected}
+          onOpenCart={() => setCartOpen(true)}
+          onRequireAccount={requireAccount}
         />
       )}
+
+      {cartOpen && (
+        <CartDrawer onClose={() => setCartOpen(false)} onRequireAccount={requireAccount} />
+      )}
+
+      {authState && (
+        <AuthModal
+          reason={authState.reason}
+          onClose={() => setAuthState(null)}
+          onSuccess={authState.onSuccess}
+        />
+      )}
+    </div>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="material-card material-card--skeleton" aria-hidden="true">
+      <div className="card-image-wrap skeleton-box" />
+      <div className="skeleton-line" />
+      <div className="skeleton-line skeleton-line--short" />
     </div>
   );
 }
