@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useShop } from './context/ShopContext.jsx';
-import { signOut } from './services/auth.js';
 import MaterialCard from './components/MaterialCard.jsx';
 import HeroSection from './components/HeroSection.jsx';
 import CategoryStrip from './components/CategoryStrip.jsx';
 import ProductDetail from './components/ProductDetail.jsx';
 import CartDrawer from './components/CartDrawer.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import ProfilePage from './components/ProfilePage.jsx';
+import { displayName } from './services/profile.js';
 
 // Web shop home: hero, category strip, filter pills, the live product grid, a
 // product detail overlay, plus the cart drawer and auth/checkout modal.
@@ -24,6 +25,7 @@ export default function ExplorePage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selected, setSelected] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [authState, setAuthState] = useState(null); // { reason, onSuccess } | null
 
   const filters = useMemo(() => ['All', ...categories], [categories]);
@@ -45,14 +47,16 @@ export default function ExplorePage() {
 
   // Lock background scroll while any overlay is open.
   useEffect(() => {
-    const open = selected || cartOpen || authState;
+    const open = selected || cartOpen || profileOpen || authState;
     document.body.style.overflow = open ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selected, cartOpen, authState]);
+  }, [selected, cartOpen, profileOpen, authState]);
 
   const requireAccount = (reason, onSuccess) => setAuthState({ reason, onSuccess });
+
+  const accountLabel = hasAccount ? displayName(user, null) : '';
 
   return (
     <div className="explore">
@@ -63,8 +67,22 @@ export default function ExplorePage() {
           <h1 className="explore-title">Explore</h1>
           <div className="header-actions">
             {hasAccount ? (
-              <button type="button" className="account-chip" onClick={() => signOut()} title="Sign out">
-                {(user?.displayName || user?.email || 'Account').split(' ')[0]} · Sign out
+              <button
+                type="button"
+                className="account-chip account-chip--signed-in"
+                onClick={() => setProfileOpen(true)}
+                title="Open profile"
+                aria-label={`Signed in as ${accountLabel}. Open profile`}
+              >
+                <span className="account-avatar" aria-hidden="true">
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="" className="account-avatar-img" />
+                  ) : (
+                    accountLabel.charAt(0).toUpperCase()
+                  )}
+                </span>
+                <span className="account-label">{accountLabel?.split(' ')[0]}</span>
+                <span className="account-status-dot" aria-hidden="true" />
               </button>
             ) : (
               <button
@@ -139,6 +157,8 @@ export default function ExplorePage() {
       {cartOpen && (
         <CartDrawer onClose={() => setCartOpen(false)} onRequireAccount={requireAccount} />
       )}
+
+      {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
 
       {authState && (
         <AuthModal
