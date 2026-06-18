@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import {
   OverviewIcon, ProductsIcon, OrdersIcon, CustomersIcon,
-  ChatIcon, CalendarIcon, BellIcon, AnalyticsIcon, SettingsIcon, PortfolioIcon,
+  ChatIcon, CalendarIcon, BellIcon, AnalyticsIcon, SettingsIcon, PortfolioIcon, AgentIcon,
 } from './icons.jsx';
 
 const manage = [
@@ -14,6 +14,7 @@ const manage = [
   { to: '/conversations', label: 'Conversations', Icon: ChatIcon },
   { to: '/appointments', label: 'Appointments', Icon: CalendarIcon },
   { to: '/notifications', label: 'Notifications', Icon: BellIcon },
+  { to: '/agent', label: 'AI Agent', Icon: AgentIcon },
 ];
 
 const comingSoon = [

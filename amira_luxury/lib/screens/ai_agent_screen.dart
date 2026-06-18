@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:iconsax/iconsax.dart';
+import '../services/agent_service.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -20,6 +22,10 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   final FocusNode _focusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   AnimationController? _borderAnimationController;
+
+  // Live conversation state.
+  String? _conversationId;
+  bool _sending = false;
   
   // Typewriter animation
   String _displayedText = '';
@@ -34,12 +40,24 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _initAnimationController();
+    _loadConfig();
     _focusNode.addListener(() {
       setState(() {}); // Rebuild when focus changes
     });
     // Start typewriter animation after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTypewriter();
+    });
+  }
+
+  // Pulls the admin-tuned greeting so the welcome line matches what the brand
+  // configured in the dashboard.
+  void _loadConfig() {
+    AgentService.instance.loadConfig().then((config) {
+      if (!mounted) return;
+      setState(() {
+        _typewriterTexts[2] = config.greeting;
+      });
     });
   }
 
@@ -85,26 +103,48 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     )..repeat();
   }
 
-  void _sendMessage() {
-    if (_textController.text.trim().isEmpty) return;
-    
+  Future<void> _sendMessage() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _sending) return;
+
     setState(() {
-      _messages.add({
-        'text': _textController.text,
-        'isUser': true,
-      });
+      _messages.add({'text': text, 'isUser': true});
       _textController.clear();
-      
-      // Simulate AI response
-      Future.delayed(const Duration(milliseconds: 800), () {
-        setState(() {
-          _messages.add({
-            'text': 'I\'m here to help you explore Amira\'s luxury interior designs. What would you like to know?',
-            'isUser': false,
-          });
-        });
-      });
+      _sending = true;
     });
+
+    try {
+      final res = await AgentService.instance.sendMessage(
+        message: text,
+        conversationId: _conversationId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _conversationId = res.conversationId ?? _conversationId;
+        _messages.add({'text': res.reply, 'isUser': false});
+        _sending = false;
+      });
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': e.code == 'failed-precondition'
+              ? (e.message ?? 'The Amira Agent is currently unavailable.')
+              : "Sorry, I couldn't respond just now. Please try again.",
+          'isUser': false,
+        });
+        _sending = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': "Sorry, I couldn't respond just now. Please try again.",
+          'isUser': false,
+        });
+        _sending = false;
+      });
+    }
   }
 
   @override
@@ -117,8 +157,10 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final screenHeight = MediaQuery.of(context).size.height;
+    // Drive layout off the actual keyboard height, NOT focus — the keyboard
+    // animates in a moment after focus, so keying off focus makes the input bar
+    // jump to the bottom before the keyboard is there (colliding with the nav).
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -222,20 +264,17 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                 ),
               ],
 
-              // Search bar positioned just above bottom nav when no messages
+              // Search bar — keep it clear of the floating bottom nav until the
+              // keyboard is actually up, then let it ride just above the keyboard.
               Padding(
                 padding: EdgeInsets.fromLTRB(
                   20,
                   12,
                   20,
-                  _focusNode.hasFocus ? 2 : 30, // Minimal padding when focused
+                  keyboardOpen ? 12 : 116, // 116 clears the floating nav
                 ),
                 child: _buildSearchBar(),
               ),
-              
-              // Fixed space for bottom nav area when no messages and not focused
-              if (_messages.isEmpty && !_focusNode.hasFocus)
-                const SizedBox(height: 100),
             ],
           ),
         ),

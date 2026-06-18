@@ -47,3 +47,6 @@ export const EyeIcon = (p) => (
 export const DotsIcon = (p) => (
   <svg {...base} {...p}><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>
 );
+export const AgentIcon = (p) => (
+  <svg {...base} {...p}><path d="M12 2l1.9 4.6L18.5 8.5 13.9 10.4 12 15l-1.9-4.6L5.5 8.5l4.6-1.9L12 2z" /><path d="M19 14l.9 2.1 2.1.9-2.1.9L19 20l-.9-2.1-2.1-.9 2.1-.9L19 14z" /></svg>
+);

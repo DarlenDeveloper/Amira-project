@@ -3,8 +3,11 @@ import PageHeader from '../components/PageHeader.jsx';
 import FilterPills from '../components/FilterPills.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Thumb from '../components/Thumb.jsx';
-import { EyeIcon, DotsIcon } from '../components/icons.jsx';
-import { useCollection } from '../db.js';
+import RowMenu from '../components/RowMenu.jsx';
+import PortfolioForm from '../components/PortfolioForm.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import { EyeIcon } from '../components/icons.jsx';
+import { useCollection, deleteDocById } from '../db.js';
 import { titleCase } from '../utils.js';
 
 const PORTFOLIO_STATUSES = ['published', 'draft', 'concept'];
@@ -12,6 +15,11 @@ const PORTFOLIO_STATUSES = ['published', 'draft', 'concept'];
 export default function Portfolio() {
   const [filter, setFilter] = useState('all');
   const { data: portfolio } = useCollection('portfolio');
+  const { data: products } = useCollection('products');
+
+  // editing: undefined = closed, null = new, object = edit. deleting = project|null.
+  const [editing, setEditing] = useState(undefined);
+  const [deleting, setDeleting] = useState(null);
 
   const counts = useMemo(() => {
     const c = {};
@@ -32,7 +40,11 @@ export default function Portfolio() {
         eyebrow="Showcase"
         title="Our Portfolio"
         subtitle={`${portfolio.length} interior projects`}
-        action={<button className="primary-btn">+ New project</button>}
+        action={
+          <button className="primary-btn" onClick={() => setEditing(null)}>
+            + New project
+          </button>
+        }
       />
 
       <FilterPills options={options} active={filter} onChange={setFilter} />
@@ -44,8 +56,10 @@ export default function Portfolio() {
               <Thumb src={p.imageUrl} alt={p.title} />
               <div className="portfolio-status"><StatusBadge status={p.status} /></div>
               <div className="portfolio-actions">
-                <button className="round-btn" aria-label="View project"><EyeIcon /></button>
-                <button className="round-btn" aria-label="More"><DotsIcon /></button>
+                <button className="round-btn" aria-label="Edit project" onClick={() => setEditing(p)}>
+                  <EyeIcon />
+                </button>
+                <RowMenu onEdit={() => setEditing(p)} onDelete={() => setDeleting(p)} />
               </div>
             </div>
             <div className="portfolio-body">
@@ -63,6 +77,27 @@ export default function Portfolio() {
           </article>
         ))}
       </div>
+
+      {editing !== undefined && (
+        <PortfolioForm
+          initial={editing}
+          products={products}
+          onClose={() => setEditing(undefined)}
+          onSaved={() => setEditing(undefined)}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete project"
+          message={`Delete "${deleting.title}"? This can't be undone.`}
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            await deleteDocById('portfolio', deleting.id);
+            setDeleting(null);
+          }}
+        />
+      )}
     </div>
   );
 }

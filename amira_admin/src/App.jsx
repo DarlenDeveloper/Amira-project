@@ -10,6 +10,7 @@ import Customers from './pages/Customers.jsx';
 import Conversations from './pages/Conversations.jsx';
 import Appointments from './pages/Appointments.jsx';
 import Notifications from './pages/Notifications.jsx';
+import Agent from './pages/Agent.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/conversations" element={<Conversations />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/agent" element={<Agent />} />
         </Routes>
       </main>
     </div>

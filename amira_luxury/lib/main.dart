@@ -130,6 +130,9 @@ class _MainNavigatorState extends State<MainNavigator> {
 
   @override
   Widget build(BuildContext context) {
+    // Hide the floating nav while the keyboard is open so it never collides
+    // with on-screen inputs (e.g. the AI agent's message bar).
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       extendBody: true,
       body: PageView(
@@ -137,13 +140,15 @@ class _MainNavigatorState extends State<MainNavigator> {
         physics: const NeverScrollableScrollPhysics(),
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        color: Colors.transparent,
-        child: CustomBottomNav(
-          currentIndex: _currentIndex,
-          onTap: _onNavTap,
-        ),
-      ),
+      bottomNavigationBar: keyboardOpen
+          ? null
+          : Container(
+              color: Colors.transparent,
+              child: CustomBottomNav(
+                currentIndex: _currentIndex,
+                onTap: _onNavTap,
+              ),
+            ),
     );
   }
 }

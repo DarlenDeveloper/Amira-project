@@ -75,6 +75,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Config (admin-tuned settings, e.g. the AI agent) ──────────────────────
+    // Signed-in clients read (the app needs the agent's greeting / on-off);
+    // only an admin writes.
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
