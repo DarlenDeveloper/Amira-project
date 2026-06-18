@@ -259,23 +259,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    if (_loading) return;
-    FocusScope.of(context).unfocus();
-    setState(() => _loading = true);
-    try {
-      final cred = await AuthService.instance.signInWithGoogle();
-      // Null means the user dismissed the Google sheet — stay put silently.
-      if (cred != null && mounted) _enterApp();
-    } on FirebaseAuthException catch (e) {
-      _showMessage(authErrorMessage(e));
-    } catch (_) {
-      _showMessage('Google sign-in failed. Please try again.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -422,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 22),
 
-              // Headline + social pill
+              // Headline
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -437,7 +420,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       letterSpacing: -0.5,
                     ),
                   ),
-                  _socialPill(),
                 ],
               ),
               const SizedBox(height: 22),
@@ -555,50 +537,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _socialPill() {
-    return GestureDetector(
-      onTap: _signInWithGoogle,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.55),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(color: _dark, shape: BoxShape.circle),
-              alignment: Alignment.center,
-              child: const Text(
-                'G',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _white,
-                  fontFamily: 'Satoshi',
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Google',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _dark,
-                fontFamily: 'Satoshi',
-              ),
-            ),
-          ],
         ),
       ),
     );
