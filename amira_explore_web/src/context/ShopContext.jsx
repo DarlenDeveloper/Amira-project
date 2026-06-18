@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { watchAuth, isFullAccount } from '../services/auth.js';
 import { watchProducts, categoriesOf } from '../services/products.js';
+import { watchPortfolioImages } from '../services/portfolio.js';
 import {
   watchCart,
   watchFavourites,
@@ -28,6 +29,7 @@ export function ShopProvider({ children }) {
 
   const [cart, setCart] = useState([]);
   const [favourites, setFavourites] = useState(new Set());
+  const [heroImages, setHeroImages] = useState([]);
 
   // Auth — resolves to an anonymous user on first load.
   useEffect(() => {
@@ -70,6 +72,12 @@ export function ShopProvider({ children }) {
       unsubCart();
       unsubFav();
     };
+  }, [user?.uid]);
+
+  // Hero carousel images from the live published portfolio.
+  useEffect(() => {
+    if (!user) return undefined;
+    return watchPortfolioImages((items) => setHeroImages(items.map((i) => i.imageUrl)));
   }, [user?.uid]);
 
   const categories = useMemo(() => categoriesOf(products), [products]);
@@ -126,6 +134,7 @@ export function ShopProvider({ children }) {
     cartCount,
     cartSubtotal,
     favourites,
+    heroImages,
     ...actions,
   };
 
