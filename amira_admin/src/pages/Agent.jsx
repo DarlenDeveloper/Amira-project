@@ -61,6 +61,24 @@ export default function Agent() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // The on/off switch persists immediately (a dedicated control shouldn't need
+  // a separate Save). Optimistic update with revert on failure. A merge write
+  // touches only `enabled`, leaving the rest of the config intact.
+  const [toggling, setToggling] = useState(false);
+  const toggleEnabled = async (next) => {
+    setForm((f) => ({ ...f, enabled: next }));
+    setToggling(true);
+    setStatus('');
+    try {
+      await setDocById('config', 'agent', { enabled: next });
+    } catch (err) {
+      setForm((f) => ({ ...f, enabled: !next })); // revert
+      setStatus(err.message ?? 'Could not update. Please try again.');
+    } finally {
+      setToggling(false);
+    }
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -105,16 +123,21 @@ export default function Agent() {
 
       <div className="agent-layout">
         <form className="form agent-form" onSubmit={save}>
-        {/* On / off */}
+        {/* On / off — saves immediately */}
         <label className="agent-toggle">
           <input
             type="checkbox"
             checked={form.enabled}
-            onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
+            disabled={toggling}
+            onChange={(e) => toggleEnabled(e.target.checked)}
           />
           <span>
-            <strong>Agent enabled</strong>
-            <em>When off, the app shows the assistant as unavailable.</em>
+            <strong>Agent enabled{toggling ? ' …' : ''}</strong>
+            <em>
+              {form.enabled
+                ? 'The assistant is live in the app.'
+                : 'The app shows the assistant as unavailable.'}
+            </em>
           </span>
         </label>
 
