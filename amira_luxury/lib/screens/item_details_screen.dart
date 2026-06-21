@@ -12,7 +12,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 class ItemDetailsScreen extends StatefulWidget {
   final Product product;
@@ -39,7 +39,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Satoshi')),
+        content: Text(msg, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1400),
@@ -168,7 +168,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
                               color: _dark,
-                              fontFamily: 'Satoshi',
+                              fontFamily: 'Plus Jakarta Sans',
                             ),
                           ),
                         ),
@@ -192,7 +192,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: _gold,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                       ),
                     ),
                   ),
@@ -206,7 +206,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
                         color: _grey,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                         height: 1.5,
                       ),
                     ),
@@ -222,7 +222,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.6,
                           color: _grey,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ),
@@ -278,7 +278,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: _dark,
-                                      fontFamily: 'Satoshi',
+                                      fontFamily: 'Plus Jakarta Sans',
                                     ),
                                   ),
                                 ],
@@ -357,7 +357,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
                       color: _grey,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -367,7 +367,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                 ],
@@ -415,7 +415,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: _dark,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),
@@ -441,7 +441,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: _white,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ),
@@ -466,7 +466,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _dark,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ),
@@ -529,7 +529,7 @@ class _QtyStepper extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: _dark,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
             ),
           ),
@@ -590,7 +590,7 @@ class _SlideToActionState extends State<_SlideToAction> {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: _white,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),

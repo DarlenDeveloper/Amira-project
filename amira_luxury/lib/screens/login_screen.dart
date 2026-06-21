@@ -10,7 +10,7 @@ import '../services/auth_service.dart';
 const _dark = Color(0xFF2A2A2A);
 const _white = Colors.white;
 const _grey = Color(0xFF7E7A74);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 const _bgImage = 'assets/images/kam-idris-hYb7kbu4x7E-unsplash.jpg';
 
@@ -126,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: _dark,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: _dark,
-                                fontFamily: 'Satoshi',
+                                fontFamily: 'Plus Jakarta Sans',
                               ),
                             ),
                           ),
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                               color: _grey,
-                              fontFamily: 'Satoshi',
+                              fontFamily: 'Plus Jakarta Sans',
                             ),
                           ),
                           if (c.dial == _country.dial) ...[
@@ -265,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(fontFamily: 'Satoshi'),
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans'),
         ),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(
           content: const Text(
             'No account found with those details. New to Amira?',
-            style: TextStyle(fontFamily: 'Satoshi'),
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans'),
           ),
           backgroundColor: _dark,
           behavior: SnackBarBehavior.floating,
@@ -385,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: _grey,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                   GestureDetector(
@@ -397,7 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: _dark,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                       ),
                     ),
                   ),
@@ -416,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 34,
                       fontWeight: FontWeight.w700,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -491,7 +491,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _gold,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),
@@ -509,7 +509,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: _dark,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                         height: 1.45,
                       ),
                     ),
@@ -531,7 +531,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: _dark,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),
@@ -605,7 +605,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _dark,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
               decoration: InputDecoration(
                 hintText: hint,
@@ -613,7 +613,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xFF9A958E),
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  fontFamily: 'Satoshi',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -644,7 +644,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: _dark,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
                 const Icon(Iconsax.arrow_down_1, size: 14, color: _grey),
@@ -665,7 +665,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _dark,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
               decoration: const InputDecoration(
                 hintText: '700 123 456',
@@ -673,7 +673,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xFF9A958E),
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  fontFamily: 'Satoshi',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -736,7 +736,7 @@ class _LoginScreenState extends State<LoginScreen> {
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: _dark,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
           ),
         ),
       ),

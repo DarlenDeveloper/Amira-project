@@ -13,7 +13,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -46,7 +46,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                     color: _dark,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
                 GestureDetector(
@@ -98,7 +98,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: isActive ? _white : _grey,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ),
@@ -180,7 +180,7 @@ class _MaterialCard extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Iconsax.magic_star5, color: _gold),
                   title: const Text('Visualise with AI',
-                      style: TextStyle(fontFamily: 'Satoshi')),
+                      style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
                   onTap: () {
                     final shell = AppShellController.of(context);
                     Navigator.of(ctx).pop();
@@ -193,7 +193,7 @@ class _MaterialCard extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Iconsax.message_text5, color: _gold),
                   title: const Text('Ask Amira about this',
-                      style: TextStyle(fontFamily: 'Satoshi')),
+                      style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
                   onTap: () {
                     final shell = AppShellController.of(context);
                     Navigator.of(ctx).pop();
@@ -248,7 +248,7 @@ class _MaterialCard extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: _dark,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                           letterSpacing: 0.4,
                         ),
                       ),
@@ -292,7 +292,7 @@ class _MaterialCard extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: _dark,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
               height: 1.25,
             ),
           ),
@@ -303,7 +303,7 @@ class _MaterialCard extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w500,
               color: _gold,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
         ],

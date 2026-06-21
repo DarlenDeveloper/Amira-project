@@ -11,7 +11,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 class RendersScreen extends StatelessWidget {
   const RendersScreen({super.key});
@@ -49,7 +49,7 @@ class RendersScreen extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                 ],
@@ -73,7 +73,7 @@ class RendersScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           color: _grey,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                           height: 1.5,
                         ),
                       ),
@@ -146,7 +146,7 @@ class _RenderTile extends StatelessWidget {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -155,7 +155,7 @@ class _RenderTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       color: session.status == 'completed' ? _gold : _grey,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                 ],
@@ -205,7 +205,7 @@ class _RenderDetailScreenState extends State<_RenderDetailScreen> {
           'Render',
           style: TextStyle(
             color: _dark,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -214,7 +214,7 @@ class _RenderDetailScreenState extends State<_RenderDetailScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           if (s.roomImageUrl != null) ...[
-            const Text('Room', style: TextStyle(fontFamily: 'Satoshi', fontWeight: FontWeight.w600)),
+            const Text('Room', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -223,7 +223,7 @@ class _RenderDetailScreenState extends State<_RenderDetailScreen> {
             const SizedBox(height: 20),
           ],
           if (s.resultUrl != null) ...[
-            const Text('Result', style: TextStyle(fontFamily: 'Satoshi', fontWeight: FontWeight.w600)),
+            const Text('Result', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -247,7 +247,7 @@ class _RenderDetailScreenState extends State<_RenderDetailScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text('Add materials to cart',
-                  style: TextStyle(fontFamily: 'Satoshi')),
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
             ),
         ],
       ),

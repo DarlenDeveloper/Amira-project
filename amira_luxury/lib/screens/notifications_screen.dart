@@ -9,7 +9,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 const _olive = Color(0xFF556B4A);
 
 class _TypeStyle {
@@ -92,7 +92,7 @@ class NotificationsScreen extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -157,7 +157,7 @@ class NotificationsScreen extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: _dark,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
           const SizedBox(height: 6),
@@ -167,7 +167,7 @@ class NotificationsScreen extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w400,
               color: _grey,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
         ],
@@ -259,7 +259,7 @@ class _NotificationTile extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: _dark,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ),
@@ -283,7 +283,7 @@ class _NotificationTile extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: _grey,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                     height: 1.4,
                   ),
                 ),
@@ -294,7 +294,7 @@ class _NotificationTile extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
                     color: _grey,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ],
@@ -337,7 +337,7 @@ class _OptionsMenu extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: _dark,
-                  fontFamily: 'Satoshi',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
               ),
             ],

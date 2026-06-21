@@ -12,7 +12,7 @@ const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
 const _lightGrey = Color(0xFFE8E8E8);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 const _lightGold = Color(0xFFF5EFE3);
 
 class AIAgentScreen extends StatefulWidget {
@@ -273,7 +273,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: _dark,
-                            fontFamily: 'Satoshi',
+                            fontFamily: 'Plus Jakarta Sans',
                           ),
                         ),
                       ),
@@ -321,7 +321,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                                       fontSize: _currentTextIndex == 0 ? 32 : (_currentTextIndex == 1 ? 18 : 15),
                                       fontWeight: _currentTextIndex == 0 ? FontWeight.w700 : (_currentTextIndex == 1 ? FontWeight.w600 : FontWeight.w400),
                                       color: _currentTextIndex == 0 ? _dark : (_currentTextIndex == 1 ? _dark : _grey),
-                                      fontFamily: 'Satoshi',
+                                      fontFamily: 'Plus Jakarta Sans',
                                       height: 1.4,
                                     ),
                                   ),
@@ -342,7 +342,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                               style: TextStyle(
                                 fontSize: 13,
                                 color: _grey.withOpacity(0.9),
-                                fontFamily: 'Satoshi',
+                                fontFamily: 'Plus Jakarta Sans',
                               ),
                             ),
                           ],
@@ -403,12 +403,12 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
             borderRadius: BorderRadius.circular(32),
             gradient: SweepGradient(
               colors: const [
-                Color(0xFFB5945A),
+                Color(0xFFC4A464),
                 Color(0xFFFFFFFF),
                 Color(0xFF2A2A2A),
-                Color(0xFFB5945A),
+                Color(0xFFC4A464),
                 Color(0xFFE8C88E),
-                Color(0xFFB5945A),
+                Color(0xFFC4A464),
               ],
               stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
               transform: GradientRotation(curvedValue * 2 * 3.14159),
@@ -439,7 +439,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                     focusNode: _focusNode,
                     onSubmitted: (_) => _sendMessage(),
                     style: const TextStyle(
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: _dark,
@@ -449,7 +449,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                       hintStyle: TextStyle(
                         color: Color(0xFFB8B8B8),
                         fontSize: 15,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                         fontWeight: FontWeight.w400,
                       ),
                       border: InputBorder.none,
@@ -531,7 +531,7 @@ class _MessageBubble extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: isUser ? _white : _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                       height: 1.4,
                     ),
                   ),
@@ -564,7 +564,7 @@ class _MessageBubble extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: _dark,
-                                fontFamily: 'Satoshi',
+                                fontFamily: 'Plus Jakarta Sans',
                               ),
                             ),
                           ),
@@ -627,7 +627,7 @@ class _SuggestionChip extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: _dark,
-                  fontFamily: 'Satoshi',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
               ),
             ),
@@ -678,7 +678,7 @@ class _BlinkingCursorState extends State<_BlinkingCursor> with SingleTickerProvi
           fontSize: 32,
           fontWeight: FontWeight.w300,
           color: _gold,
-          fontFamily: 'Satoshi',
+          fontFamily: 'Plus Jakarta Sans',
         ),
       ),
     );

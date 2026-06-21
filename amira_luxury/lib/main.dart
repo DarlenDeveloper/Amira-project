@@ -44,7 +44,7 @@ class AmiraApp extends StatelessWidget {
       title: 'Amira Luxury',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Satoshi',
+        fontFamily: 'Plus Jakarta Sans',
         scaffoldBackgroundColor: const Color(0xFFF2F2EE),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF2C2C2C),
@@ -175,7 +175,7 @@ class PlaceholderScreen extends StatelessWidget {
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w600,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
           ),
         ),
       ),

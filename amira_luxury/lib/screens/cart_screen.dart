@@ -9,7 +9,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -52,7 +52,7 @@ class CartScreen extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: _dark,
-                      fontFamily: 'Satoshi',
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
                 ],
@@ -117,7 +117,7 @@ class CartScreen extends StatelessWidget {
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: _dark,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
           const SizedBox(height: 6),
@@ -127,7 +127,7 @@ class CartScreen extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w400,
               color: _grey,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
         ],
@@ -174,7 +174,7 @@ class CartScreen extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Order placed',
-                        style: TextStyle(fontFamily: 'Satoshi')),
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
                     backgroundColor: _dark,
                     behavior: SnackBarBehavior.floating,
                     duration: Duration(milliseconds: 1400),
@@ -186,7 +186,7 @@ class CartScreen extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Couldn\'t place the order. Please try again.',
-                        style: TextStyle(fontFamily: 'Satoshi')),
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
                     backgroundColor: _dark,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -207,7 +207,7 @@ class CartScreen extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _white,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),
@@ -228,7 +228,7 @@ class CartScreen extends StatelessWidget {
             fontSize: isTotal ? 17 : 15,
             fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
             color: isTotal ? _dark : _grey,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
           ),
         ),
         Text(
@@ -237,7 +237,7 @@ class CartScreen extends StatelessWidget {
             fontSize: isTotal ? 18 : 15,
             fontWeight: FontWeight.w700,
             color: isTotal ? _gold : _dark,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
           ),
         ),
       ],
@@ -296,7 +296,7 @@ class _CartTile extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _dark,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                           height: 1.2,
                         ),
                       ),
@@ -315,7 +315,7 @@ class _CartTile extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
                     color: _grey,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
                 if (item.colorName != null) ...[
@@ -340,7 +340,7 @@ class _CartTile extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: _grey,
-                          fontFamily: 'Satoshi',
+                          fontFamily: 'Plus Jakarta Sans',
                         ),
                       ),
                     ],
@@ -356,7 +356,7 @@ class _CartTile extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: _gold,
-                        fontFamily: 'Satoshi',
+                        fontFamily: 'Plus Jakarta Sans',
                       ),
                     ),
                     _QtyStepper(
@@ -408,7 +408,7 @@ class _QtyStepper extends StatelessWidget {
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: _dark,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
             ),
           ),

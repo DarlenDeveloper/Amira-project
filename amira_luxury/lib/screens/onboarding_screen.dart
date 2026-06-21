@@ -4,7 +4,7 @@ import 'login_screen.dart';
 
 const _dark = Color(0xFF2A2A2A);
 const _white = Colors.white;
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 // ── Slide data ────────────────────────────────────────────────────────────────
 // Each slide pairs a full-bleed interior with a pillar of the Amira experience.
@@ -192,7 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: _white,
-                            fontFamily: 'Satoshi',
+                            fontFamily: 'Plus Jakarta Sans',
                             letterSpacing: 4,
                           ),
                         ),
@@ -213,7 +213,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.white70,
-                                  fontFamily: 'Satoshi',
+                                  fontFamily: 'Plus Jakarta Sans',
                                 ),
                               ),
                             ),
@@ -252,7 +252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 fontSize: 40,
                                 fontWeight: FontWeight.w600,
                                 color: _white,
-                                fontFamily: 'Satoshi',
+                                fontFamily: 'Plus Jakarta Sans',
                                 height: 1.05,
                                 letterSpacing: -0.5,
                               ),
@@ -266,7 +266,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
                                   color: Colors.white70,
-                                  fontFamily: 'Satoshi',
+                                  fontFamily: 'Plus Jakarta Sans',
                                   height: 1.5,
                                 ),
                               ),
@@ -401,7 +401,7 @@ class _ProceedButton extends StatelessWidget {
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: _gold,
-            fontFamily: 'Satoshi',
+            fontFamily: 'Plus Jakarta Sans',
           ),
         ),
       ),

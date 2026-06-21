@@ -9,7 +9,7 @@ const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
 const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
-const _gold = Color(0xFFB5945A);
+const _gold = Color(0xFFC4A464);
 
 /// Lets the signed-in user edit their name and address. Read-only identity
 /// fields (email / phone) are shown for context but can't be changed here,
@@ -88,7 +88,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontFamily: 'Satoshi')),
+        content: Text(message, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1800),
@@ -188,7 +188,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: _dark,
-              fontFamily: 'Satoshi',
+              fontFamily: 'Plus Jakarta Sans',
             ),
           ),
         ],
@@ -205,7 +205,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: _grey,
-          fontFamily: 'Satoshi',
+          fontFamily: 'Plus Jakarta Sans',
           letterSpacing: 0.8,
         ),
       ),
@@ -244,7 +244,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _dark,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
               decoration: InputDecoration(
                 hintText: hint,
@@ -252,7 +252,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: Color(0xFF9A958E),
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  fontFamily: 'Satoshi',
+                  fontFamily: 'Plus Jakarta Sans',
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -283,7 +283,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: _grey,
-                fontFamily: 'Satoshi',
+                fontFamily: 'Plus Jakarta Sans',
               ),
             ),
           ),
@@ -322,7 +322,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _white,
-                    fontFamily: 'Satoshi',
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
         ),
