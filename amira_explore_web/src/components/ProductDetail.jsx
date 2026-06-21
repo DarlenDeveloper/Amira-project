@@ -3,15 +3,18 @@ import { useShop } from '../context/ShopContext.jsx';
 import { formatUgx } from '../lib/currency.js';
 import { placeOrderForProduct } from '../services/orders.js';
 import { requestAppointment } from '../services/appointments.js';
+import DeliveryLocationField from './DeliveryLocationField.jsx';
 
 // Web product page: image carousel (left) + specs & actions (right), then a
 // "You might also like" row. Add-to-cart, order, and booking all hit the live
 // backend; ordering/booking require a full account (handled via onRequireAccount).
 export default function ProductDetail({ data, related = [], onClose, onSelect, onOpenCart, onRequireAccount }) {
-  const { addToCart, hasAccount } = useShop();
+  const { addToCart, hasAccount, user } = useShop();
   const [qty, setQty] = useState(1);
   const [toast, setToast] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [address, setAddress] = useState('');
+  const [locationMeta, setLocationMeta] = useState({});
 
   const total = (data.value ?? 0) * qty;
   const soldOut = data.outOfStock;
@@ -31,6 +34,8 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
   useEffect(() => {
     setQty(1);
     setSelectedColor(data.colors?.[0] ?? null);
+    setAddress('');
+    setLocationMeta({});
     document.querySelector('.detail-scroll')?.scrollTo({ top: 0 });
   }, [data]);
 
@@ -73,7 +78,14 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
       }
       setBusy(true);
       try {
-        await placeOrderForProduct(data, orderQty, selectedColor);
+        if (!address.trim()) {
+          showToast('Enter your delivery location');
+          return;
+        }
+        await placeOrderForProduct(data, orderQty, selectedColor, {
+          address,
+          ...locationMeta,
+        });
         showToast(`Order placed for ${data.name}`);
       } catch (err) {
         console.error('[Amira] Order failed:', err?.code, err?.message);
@@ -184,6 +196,18 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
                 <span className="info-total-value">{formatUgx(total)}</span>
               </div>
             </div>
+
+            {hasAccount && (
+              <DeliveryLocationField
+                user={user}
+                hasAccount={hasAccount}
+                address={address}
+                onAddressChange={setAddress}
+                onLocated={setLocationMeta}
+                disabled={busy || soldOut}
+                id="product-delivery-address"
+              />
+            )}
 
             <div className="info-actions">
               <button type="button" className="btn btn--solid" onClick={handleAddToCart} disabled={soldOut || busy}>

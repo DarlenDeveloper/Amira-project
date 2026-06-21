@@ -6,6 +6,7 @@ export default function AddressField({
   value,
   onChange,
   onCountryDetected,
+  onLocated,
   disabled = false,
   autoDetectOnMount = false,
   id = 'address',
@@ -21,6 +22,7 @@ export default function AddressField({
       const result = await detectLocationAddress();
       onChange(result.address);
       onCountryDetected?.(result.countryIso);
+      onLocated?.(result);
     } catch (err) {
       setLocError(locationErrorMessage(err));
     } finally {

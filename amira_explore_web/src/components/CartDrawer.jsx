@@ -1,30 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useShop } from '../context/ShopContext.jsx';
 import { formatUgx } from '../lib/currency.js';
 import { placeOrderFromCart, DELIVERY_FEE } from '../services/orders.js';
+import DeliveryLocationField from './DeliveryLocationField.jsx';
 
 // Slide-in cart: live lines with quantity steppers, totals, and checkout.
 // Checkout requires a full account — when the shopper is still anonymous it
 // asks for one via `onRequireAccount`, then resumes automatically.
 export default function CartDrawer({ onClose, onRequireAccount }) {
-  const { cart, cartSubtotal, hasAccount, setQty, removeFromCart, clearCart } = useShop();
+  const { cart, cartSubtotal, hasAccount, user, setQty, removeFromCart, clearCart } = useShop();
   const [placing, setPlacing] = useState(false);
-  const [done, setDone] = useState(null); // placed order ref
+  const [done, setDone] = useState(null);
   const [error, setError] = useState('');
+  const [address, setAddress] = useState('');
+  const [locationMeta, setLocationMeta] = useState({});
 
   const isEmpty = cart.length === 0;
   const total = cartSubtotal + (isEmpty ? 0 : DELIVERY_FEE);
 
+  const buildLocation = () => ({
+    address,
+    ...locationMeta,
+  });
+
   const doCheckout = async () => {
+    if (!address.trim()) {
+      setError('Enter your delivery location before checkout.');
+      return;
+    }
     setPlacing(true);
     setError('');
     try {
-      await placeOrderFromCart(cart);
+      await placeOrderFromCart(cart, buildLocation());
       await clearCart();
       setDone(true);
     } catch (err) {
       console.error('[Amira] Checkout failed:', err?.code, err?.message);
-      setError('We couldn\'t place your order. Please try again.');
+      setError(
+        err?.code === 'needs-location'
+          ? 'Enter your delivery location before checkout.'
+          : 'We couldn\'t place your order. Please try again.',
+      );
     } finally {
       setPlacing(false);
     }
@@ -112,6 +128,18 @@ export default function CartDrawer({ onClose, onRequireAccount }) {
             </ul>
 
             <footer className="cart-foot">
+              {hasAccount && (
+                <DeliveryLocationField
+                  user={user}
+                  hasAccount={hasAccount}
+                  address={address}
+                  onAddressChange={setAddress}
+                  onLocated={setLocationMeta}
+                  disabled={placing}
+                  id="cart-delivery-address"
+                />
+              )}
+
               <div className="cart-row">
                 <span>Subtotal</span>
                 <span>{formatUgx(cartSubtotal)}</span>

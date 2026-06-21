@@ -1175,6 +1175,16 @@ body {
   border-top: 1px solid #e6e5df;
   background: var(--bg);
 }
+.delivery-location-field {
+  margin-bottom: 16px;
+}
+.delivery-location-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+}
 .cart-row {
   display: flex;
   justify-content: space-between;

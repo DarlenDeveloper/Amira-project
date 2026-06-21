@@ -52,11 +52,32 @@ async function resolveCustomer(user) {
   return { customer, email };
 }
 
-async function create(items, total) {
+/** Maps checkout location into order document fields. */
+export function normalizeDeliveryLocation(location) {
+  const address = String(location?.address || '').trim();
+  if (!address) return null;
+  const payload = { deliveryAddress: address };
+  const lat = Number(location?.latitude);
+  const lng = Number(location?.longitude);
+  if (Number.isFinite(lat)) payload.deliveryLatitude = lat;
+  if (Number.isFinite(lng)) payload.deliveryLongitude = lng;
+  if (location?.countryIso) {
+    payload.deliveryCountry = String(location.countryIso).toUpperCase();
+  }
+  return payload;
+}
+
+async function create(items, total, location) {
   const user = auth.currentUser;
   if (!user || user.isAnonymous) {
     const err = new Error('Sign in to place an order.');
     err.code = 'needs-account';
+    throw err;
+  }
+  const delivery = normalizeDeliveryLocation(location);
+  if (!delivery) {
+    const err = new Error('A delivery address is required.');
+    err.code = 'needs-location';
     throw err;
   }
   const { customer, email } = await resolveCustomer(user);
@@ -65,6 +86,7 @@ async function create(items, total) {
     uid: user.uid,
     customer,
     email,
+    ...delivery,
     items,
     itemCount: items.reduce((s, i) => s + i.qty, 0),
     total,
@@ -76,15 +98,15 @@ async function create(items, total) {
 }
 
 /** Places an order for every cart line (adds delivery). Caller clears the cart. */
-export async function placeOrderFromCart(lines) {
+export async function placeOrderFromCart(lines, location) {
   if (!lines.length) return;
   const items = lines.map(orderItem);
   const subtotal = items.reduce((s, i) => s + i.value * i.qty, 0);
-  await create(items, subtotal + DELIVERY_FEE);
+  await create(items, subtotal + DELIVERY_FEE, location);
 }
 
 /** Places an order for a single product at the chosen quantity (no delivery). */
-export async function placeOrderForProduct(product, qty, color = null) {
+export async function placeOrderForProduct(product, qty, color = null, location) {
   const item = orderItem({
     productId: product.id,
     name: product.name,
@@ -94,7 +116,7 @@ export async function placeOrderForProduct(product, qty, color = null) {
     qty,
     ...(color?.name ? { colorName: color.name, colorHex: color.hex } : {}),
   });
-  await create([item], item.value * item.qty);
+  await create([item], item.value * item.qty, location);
 }
 
 function orderFromDoc(d) {

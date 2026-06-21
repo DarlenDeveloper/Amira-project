@@ -26,6 +26,8 @@ async function reverseGeocodeClient(lat, lng) {
   return {
     address: address || data.countryName || '',
     countryIso: (data.countryCode || detectCountryIso()).toUpperCase(),
+    latitude: lat,
+    longitude: lng,
   };
 }
 
