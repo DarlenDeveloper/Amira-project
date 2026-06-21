@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:iconsax/iconsax.dart';
@@ -25,6 +27,7 @@ class AIAgentScreen extends StatefulWidget {
 class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
   AnimationController? _borderAnimationController;
 
@@ -166,6 +169,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       if (overrideText == null) _textController.clear();
       _sending = true;
     });
+    _scrollToBottom();
 
     try {
       final res = await AgentService.instance.sendMessage(
@@ -178,10 +182,11 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       if (!mounted) return;
       setState(() {
         _conversationId = res.conversationId ?? _conversationId;
-        _messages.add({'text': res.reply, 'isUser': false});
+        _messages.add({'text': res.reply, 'isUser': false, 'animate': true});
         _sending = false;
         _pendingProductId = null;
       });
+      _scrollToBottom();
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -222,8 +227,28 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     _shell?.removeListener(_onShellChange);
     _textController.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     _borderAnimationController?.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // Keeps the view pinned to the newest content as the reply types out.
+  void _followBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    });
   }
 
   @override
@@ -284,16 +309,31 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                 // Chat messages
                 Expanded(
                   child: ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _messages.length,
+                    itemCount: _messages.length + (_sending ? 1 : 0),
                     itemBuilder: (_, i) {
+                      if (i >= _messages.length) {
+                        return const _TypingIndicator();
+                      }
                       final msg = _messages[i];
+                      final isUser = msg['isUser'] as bool;
+                      final text = msg['text'] as String;
+                      if (!isUser && msg['animate'] == true) {
+                        return _StreamingAgentBubble(
+                          text: text,
+                          linkedProducts: _linkedProducts(text),
+                          onTick: _followBottom,
+                          onDone: () {
+                            if (!mounted) return;
+                            setState(() => msg['animate'] = false);
+                          },
+                        );
+                      }
                       return _MessageBubble(
-                        text: msg['text'] as String,
-                        isUser: msg['isUser'] as bool,
-                        linkedProducts: msg['isUser'] as bool
-                            ? const []
-                            : _linkedProducts(msg['text'] as String),
+                        text: text,
+                        isUser: isUser,
+                        linkedProducts: isUser ? const [] : _linkedProducts(text),
                       );
                     },
                   ),
@@ -581,6 +621,228 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+
+// Animated three-dot "agent is typing" indicator, styled as an agent bubble.
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _gold.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Iconsax.message_text5, color: _gold, size: 16),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (i) {
+                    // Stagger each dot's phase for a left-to-right wave.
+                    final t = (_controller.value - i * 0.18) % 1.0;
+                    final wave = (sin(t * 2 * pi) + 1) / 2; // 0..1
+                    return Padding(
+                      padding: EdgeInsets.only(right: i < 2 ? 6 : 0),
+                      child: Transform.translate(
+                        offset: Offset(0, -3 * wave),
+                        child: Opacity(
+                          opacity: 0.35 + 0.65 * wave,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: _grey,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Streams an agent reply in character-by-character, like live typing, then
+// settles into the same static bubble look once complete.
+class _StreamingAgentBubble extends StatefulWidget {
+  final String text;
+  final List<Product> linkedProducts;
+  final VoidCallback onTick;
+  final VoidCallback onDone;
+
+  const _StreamingAgentBubble({
+    required this.text,
+    required this.linkedProducts,
+    required this.onTick,
+    required this.onDone,
+  });
+
+  @override
+  State<_StreamingAgentBubble> createState() => _StreamingAgentBubbleState();
+}
+
+class _StreamingAgentBubbleState extends State<_StreamingAgentBubble> {
+  int _revealed = 0;
+  bool _done = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 18), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_revealed >= widget.text.length) {
+        t.cancel();
+        setState(() => _done = true);
+        widget.onDone();
+        return;
+      }
+      // Reveal a couple of characters per tick for a natural typing pace.
+      setState(() => _revealed = min(widget.text.length, _revealed + 2));
+      widget.onTick();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = widget.text.substring(0, _revealed);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _gold.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Iconsax.message_text5, color: _gold, size: 16),
+          ),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    shown,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans',
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                if (_done && widget.linkedProducts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      for (final p in widget.linkedProducts)
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ItemDetailsScreen(product: p),
+                            ),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _lightGold,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              p.name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _dark,
+                                fontFamily: 'Plus Jakarta Sans',
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // Suggestion Chip Widget
 class _SuggestionChip extends StatelessWidget {
