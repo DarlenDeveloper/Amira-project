@@ -163,6 +163,41 @@ class AuthService {
     await _auth.signOut();
   }
 
+  // ── Password & security ─────────────────────────────────────────────────────
+  /// When this user signed in last (from Firebase auth metadata).
+  DateTime? get lastSignInTime => _auth.currentUser?.metadata.lastSignInTime;
+
+  /// When the account was created.
+  DateTime? get accountCreatedTime => _auth.currentUser?.metadata.creationTime;
+
+  /// Whether the current user can change a password — true for email and phone
+  /// accounts (both backed by a password credential), false for Google-only.
+  bool get canChangePassword {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    return user.providerData.any((p) => p.providerId == 'password');
+  }
+
+  /// Re-authenticates with the current password, then sets a new one.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'You need to be signed in to change your password.',
+      );
+    }
+    final cred = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+  }
+
   // ── Profile (Firestore) ─────────────────────────────────────────────────────────
   /// Creates or merges the `users/{uid}` document. Existing fields are never
   /// overwritten with nulls (see [AppUser.toMap]). The internal phone-credential
