@@ -428,6 +428,19 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     );
   }
 
+  void _showUnavailable(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$feature is unavailable for the moment.',
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans'),
+        ),
+        backgroundColor: _dark,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     if (_borderAnimationController == null) {
       return const SizedBox();
@@ -464,12 +477,12 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => _showUnavailable('Image upload'),
                   child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => _showUnavailable('Voice input'),
                   child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 14),
