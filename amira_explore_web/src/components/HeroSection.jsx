@@ -121,9 +121,6 @@ export default function HeroSection() {
           Wall panels, marble, stone, lighting and more — curated textures and
           materials that turn a space into an experience.
         </p>
-        <a className="hero-cta" href="#explore-grid">
-          Browse the collection
-        </a>
       </div>
 
       {slides.length > 1 && (
