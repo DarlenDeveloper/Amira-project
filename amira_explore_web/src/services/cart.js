@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import { cartLineId } from '../lib/productColors.js';
 
 const userDoc = (uid) => doc(db, 'users', uid);
 const cartCol = (uid) => collection(userDoc(uid), 'cart');
@@ -30,6 +31,8 @@ function cartLineFromDoc(d) {
     unit: data.unit || 'unit',
     value: Number(data.value) || 0,
     qty: Number(data.qty) || 1,
+    colorName: data.colorName || null,
+    colorHex: data.colorHex || null,
     get lineTotal() {
       return this.value * this.qty;
     },
@@ -44,8 +47,9 @@ export function watchCart(uid, onData) {
 }
 
 /** Adds `qty` of a product, merging with any existing line (transactional). */
-export async function addToCart(uid, product, qty = 1) {
-  const ref = doc(cartCol(uid), product.id);
+export async function addToCart(uid, product, qty = 1, color = null) {
+  const lineId = cartLineId(product.id, color);
+  const ref = doc(cartCol(uid), lineId);
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const existing = snap.exists() ? Number(snap.data().qty) || 0 : 0;
@@ -58,6 +62,7 @@ export async function addToCart(uid, product, qty = 1) {
         unit: product.unit,
         value: product.value,
         qty: existing + qty,
+        ...(color?.name ? { colorName: color.name, colorHex: color.hex } : {}),
         updatedAt: serverTimestamp(),
       },
       { merge: true },

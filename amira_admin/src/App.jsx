@@ -11,6 +11,8 @@ import Conversations from './pages/Conversations.jsx';
 import Appointments from './pages/Appointments.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Agent from './pages/Agent.jsx';
+import Renders from './pages/Renders.jsx';
+import Analytics from './pages/Analytics.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/agent" element={<Agent />} />
+          <Route path="/renders" element={<Renders />} />
+          <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </main>
     </div>

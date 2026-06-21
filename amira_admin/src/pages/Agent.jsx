@@ -32,11 +32,18 @@ export default function Agent() {
 
   // Recent agent activity — most recently updated conversations.
   const { data: convData } = useCollection('conversations');
+  const { data: renderData } = useCollection('renders');
   const recent = useMemo(() => {
     return [...convData]
       .sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0))
       .slice(0, 6);
   }, [convData]);
+
+  const recentRenders = useMemo(() => {
+    return [...renderData]
+      .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0))
+      .slice(0, 4);
+  }, [renderData]);
 
   const [form, setForm] = useState(DEFAULTS);
   const [hydrated, setHydrated] = useState(false);
@@ -224,6 +231,30 @@ export default function Agent() {
                   {c.lastMessage && (
                     <p className="agent-recent-a">{c.lastMessage}</p>
                   )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        <aside className="agent-recent" style={{ marginTop: 24 }}>
+          <div className="agent-recent-head">
+            <h2 className="agent-recent-title">Recent renders</h2>
+            <Link to="/renders" className="agent-recent-link">View all</Link>
+          </div>
+          {recentRenders.length === 0 ? (
+            <p className="agent-recent-empty">No Visual Studio sessions yet.</p>
+          ) : (
+            <ul className="agent-recent-list">
+              {recentRenders.map((r) => (
+                <li key={r.id} className="agent-recent-item">
+                  <div className="agent-recent-top">
+                    <span className="agent-recent-name">{r.customer || 'Member'}</span>
+                    <span className="agent-recent-time">{formatDate(r.createdAt)}</span>
+                  </div>
+                  <p className="agent-recent-a">
+                    {(r.materialNames || []).join(', ') || 'Visual Studio'} · {r.status}
+                  </p>
                 </li>
               ))}
             </ul>

@@ -16,13 +16,32 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid) && isValidProfile();
       allow update: if isOwner(uid) && isValidProfile();
-      allow delete: if false; // profiles are not user-deletable for now
+      allow delete: if false;
 
-      // Future: user-scoped subcollections (e.g. cart, favourites) inherit the
-      // owner check by default.
-      match /{document=**} {
+      // Render history mirror — Functions write; owner + admin read.
+      match /renders/{renderId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      match /cart/{docId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /favourites/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /notificationState/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ── Visual Studio renders (top-level audit trail) ─────────────────────────
+    // Written by Cloud Functions only (Admin SDK).
+    match /renders/{renderId} {
+      allow read: if isOwnerOf(resource) || isAdmin();
+      allow create, update, delete: if false;
     }
 
     // ── Products (catalogue) ─────────────────────────────────────────────────
@@ -70,8 +89,9 @@ service cloud.firestore {
     }
 
     // ── Notifications (admin broadcasts) ──────────────────────────────────────
+    // Public read — guests on web/app can see broadcast announcements.
     match /notifications/{notificationId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -81,6 +101,20 @@ service cloud.firestore {
     match /config/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // OTP codes for password reset — Cloud Functions only (Admin SDK).
+    match /password_reset_otps/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── Page / product views (web shop analytics) ───────────────────────────
+    match /pageViews/{eventId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && isValidPageView();
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -113,6 +147,20 @@ service cloud.firestore {
         && (!('phone' in data) || data.phone is string)
         && (!('address' in data) || data.address is string)
         && (!('photoUrl' in data) || data.photoUrl is string);
+    }
+
+    function isValidPageView() {
+      let data = request.resource.data;
+      let allowed = ['uid', 'isGuest', 'source', 'page', 'productId',
+                     'productName', 'category', 'createdAt'];
+      return data.keys().hasOnly(allowed)
+        && data.uid is string
+        && data.isGuest is bool
+        && data.source is string
+        && data.page is string
+        && (!('productId' in data) || data.productId is string)
+        && (!('productName' in data) || data.productName is string)
+        && (!('category' in data) || data.category is string);
     }
 
     // Everything not matched above is denied by default.

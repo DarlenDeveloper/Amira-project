@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/cart_line.dart';
 import '../models/product.dart';
+import '../utils/product_colors.dart';
 
 /// Per-user shopping state: the cart and favourites.
 ///
@@ -62,15 +63,15 @@ class ShopService {
   }
 
   /// Adds [qty] of [product] to the cart, merging with any existing line.
-  Future<void> addToCart(Product product, {int qty = 1}) async {
+  Future<void> addToCart(Product product, {int qty = 1, ProductColor? color}) async {
     final col = _cart;
     if (col == null) return;
-    final ref = col.doc(product.id);
+    final ref = col.doc(cartLineId(product.id, color));
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final existingQty =
           snap.exists ? ((snap.data()?['qty'] as num?)?.toInt() ?? 0) : 0;
-      final line = CartLine.fromProduct(product, qty: existingQty + qty);
+      final line = CartLine.fromProduct(product, qty: existingQty + qty, color: color);
       tx.set(ref, line.toMap(), SetOptions(merge: true));
     });
   }

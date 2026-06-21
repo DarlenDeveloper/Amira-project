@@ -17,6 +17,7 @@ class Appointment {
   final String appointmentId; // human ref, e.g. AP-2042
   final String uid;
   final String customer;
+  final String phone;
   final String email;
   final String type;
   final String date;
@@ -30,6 +31,7 @@ class Appointment {
     required this.appointmentId,
     required this.uid,
     required this.customer,
+    required this.phone,
     required this.email,
     required this.type,
     required this.date,
@@ -47,6 +49,7 @@ class Appointment {
       appointmentId: (data['appointmentId'] as String?) ?? doc.id,
       uid: (data['uid'] as String?) ?? '',
       customer: (data['customer'] as String?) ?? '',
+      phone: (data['phone'] as String?) ?? '',
       email: (data['email'] as String?) ?? '',
       type: (data['type'] as String?) ?? '',
       date: (data['date'] as String?) ?? '',

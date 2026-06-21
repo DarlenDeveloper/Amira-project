@@ -20,7 +20,7 @@ import {
   updateProfile as updateAuthProfile,
   signOut as fbSignOut,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
 
 const googleProvider = new GoogleAuthProvider();
@@ -78,7 +78,7 @@ export async function signInWithEmail(email, password) {
  * credential is LINKED to it so the same uid (and its cart) is kept. Falls back
  * to a plain sign-up if there's no anonymous session to upgrade.
  */
-export async function signUpWithEmail({ email, password, name, address }) {
+export async function signUpWithEmail({ email, password, name, address, phone }) {
   const current = auth.currentUser;
   let user;
   if (current?.isAnonymous) {
@@ -90,7 +90,7 @@ export async function signUpWithEmail({ email, password, name, address }) {
     user = result.user;
   }
   if (name) await updateAuthProfile(user, { displayName: name });
-  await upsertProfile(user, { name, email, address, isNew: true });
+  await upsertProfile(user, { name, email, address, phone, isNew: true });
   return user;
 }
 
@@ -127,6 +127,29 @@ export async function signInWithGoogle() {
     photoUrl: user.photoURL,
     isNew: true,
   });
+  return user;
+}
+
+/** One-shot read of users/{uid}. */
+export async function getProfile(uid) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+/** True when a full account still needs a phone number on file. */
+export function profileNeedsPhone(profile) {
+  return !String(profile?.phone || '').trim();
+}
+
+/** Merge profile fields for the signed-in user. */
+export async function updateProfile({ name, email, phone, address, photoUrl } = {}) {
+  const user = auth.currentUser;
+  if (!user || user.isAnonymous) {
+    const err = new Error('Sign in to update your profile.');
+    err.code = 'needs-account';
+    throw err;
+  }
+  await upsertProfile(user, { name, email, phone, address, photoUrl });
   return user;
 }
 

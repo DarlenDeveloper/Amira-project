@@ -6,6 +6,7 @@
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { priceLabel } from '../lib/currency.js';
+import { normalizeColors } from '../lib/productColors.js';
 
 const PLACEHOLDER = '/images/hero.jpg';
 
@@ -40,6 +41,7 @@ export function mapProduct(id, data = {}) {
   return {
     id,
     name: data.name || 'Untitled',
+    imageKey: data.imageKey || '',
     image: images[0] || PLACEHOLDER,
     images: images.length ? images : [PLACEHOLDER],
     imageUrl: data.imageUrl ?? images[0] ?? null,
@@ -54,6 +56,7 @@ export function mapProduct(id, data = {}) {
     status,
     outOfStock: status === 'out' || (Number(data.stock) || 0) <= 0,
     order: Number(data.order) || 0,
+    colors: normalizeColors(data.colors),
   };
 }
 

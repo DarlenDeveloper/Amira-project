@@ -7,7 +7,11 @@ import ProductDetail from './components/ProductDetail.jsx';
 import CartDrawer from './components/CartDrawer.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
-import { displayName } from './services/profile.js';
+import CompleteProfileModal from './components/CompleteProfileModal.jsx';
+import NotificationsPanel from './components/NotificationsPanel.jsx';
+import { profileNeedsPhone } from './services/auth.js';
+import { watchProfile, displayName } from './services/profile.js';
+import { trackPageView } from './services/analytics.js';
 
 // Web shop home: hero, category strip, filter pills, the live product grid, a
 // product detail overlay, plus the cart drawer and auth/checkout modal.
@@ -20,13 +24,33 @@ export default function ExplorePage() {
     cartCount,
     user,
     hasAccount,
+    notificationUnreadCount,
   } = useShop();
 
   const [activeFilter, setActiveFilter] = useState('All');
   const [selected, setSelected] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [authState, setAuthState] = useState(null); // { reason, onSuccess } | null
+  const [profile, setProfile] = useState(null);
+  const [profileReady, setProfileReady] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uid || !hasAccount) {
+      setProfile(null);
+      setProfileReady(false);
+      return undefined;
+    }
+    setProfileReady(false);
+    return watchProfile(user.uid, (data) => {
+      setProfile(data);
+      setProfileReady(true);
+    });
+  }, [user?.uid, hasAccount]);
+
+  const needsPhoneComplete =
+    hasAccount && profileReady && profileNeedsPhone(profile) && !authState;
 
   const filters = useMemo(() => ['All', ...categories], [categories]);
 
@@ -47,16 +71,52 @@ export default function ExplorePage() {
 
   // Lock background scroll while any overlay is open.
   useEffect(() => {
-    const open = selected || cartOpen || profileOpen || authState;
+    const open = selected || cartOpen || notifOpen || profileOpen || authState || needsPhoneComplete;
     document.body.style.overflow = open ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selected, cartOpen, profileOpen, authState]);
+  }, [selected, cartOpen, notifOpen, profileOpen, authState, needsPhoneComplete]);
 
   const requireAccount = (reason, onSuccess) => setAuthState({ reason, onSuccess });
 
-  const accountLabel = hasAccount ? displayName(user, null) : '';
+  const accountLabel = hasAccount ? displayName(user, profile) : '';
+
+  // Analytics — pages and products visited (guests + members).
+  useEffect(() => {
+    if (!user?.uid) return;
+    trackPageView(user, { page: 'explore' });
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid || !selected) return;
+    trackPageView(user, {
+      page: 'product',
+      productId: selected.id,
+      productName: selected.name,
+      category: selected.category,
+    });
+  }, [user?.uid, selected?.id]);
+
+  useEffect(() => {
+    if (!user?.uid || activeFilter === 'All') return;
+    trackPageView(user, { page: 'category', category: activeFilter });
+  }, [user?.uid, activeFilter]);
+
+  useEffect(() => {
+    if (!user?.uid || !cartOpen) return;
+    trackPageView(user, { page: 'cart' });
+  }, [user?.uid, cartOpen]);
+
+  useEffect(() => {
+    if (!user?.uid || !profileOpen) return;
+    trackPageView(user, { page: 'profile' });
+  }, [user?.uid, profileOpen]);
+
+  useEffect(() => {
+    if (!user?.uid || !notifOpen) return;
+    trackPageView(user, { page: 'notifications' });
+  }, [user?.uid, notifOpen]);
 
   return (
     <div className="explore">
@@ -93,6 +153,17 @@ export default function ExplorePage() {
                 Sign in
               </button>
             )}
+            <button
+              type="button"
+              className="notif-button"
+              aria-label="Open notifications"
+              onClick={() => setNotifOpen(true)}
+            >
+              <NotifIcon />
+              {notificationUnreadCount > 0 && (
+                <span className="notif-count">{notificationUnreadCount}</span>
+              )}
+            </button>
             <button type="button" className="cart-button" aria-label="Open cart" onClick={() => setCartOpen(true)}>
               <CartIcon />
               {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
@@ -158,7 +229,13 @@ export default function ExplorePage() {
         <CartDrawer onClose={() => setCartOpen(false)} onRequireAccount={requireAccount} />
       )}
 
+      {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
+
       {profileOpen && <ProfilePage onClose={() => setProfileOpen(false)} />}
+
+      {needsPhoneComplete && (
+        <CompleteProfileModal userName={accountLabel} />
+      )}
 
       {authState && (
         <AuthModal
@@ -185,6 +262,14 @@ function CartIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6zM3.8 6 6 3h12l2.2 3H3.8z" />
+    </svg>
+  );
+}
+
+function NotifIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-6-6.92V3a1 1 0 1 0-2 0v1.08A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z" />
     </svg>
   );
 }

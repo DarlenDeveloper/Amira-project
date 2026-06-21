@@ -318,6 +318,34 @@ class _CartTile extends StatelessWidget {
                     fontFamily: 'Satoshi',
                   ),
                 ),
+                if (item.colorName != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _cartColor(item.colorHex),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.black.withOpacity(0.12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        item.colorName!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _grey,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -404,4 +432,14 @@ class _QtyStepper extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _cartColor(String? hex) {
+  var h = (hex ?? '').trim();
+  if (!h.startsWith('#')) h = '#$h';
+  if (h.length == 7) {
+    final v = int.tryParse(h.substring(1), radix: 16);
+    if (v != null) return Color(0xFF000000 | v);
+  }
+  return const Color(0xFF888888);
 }

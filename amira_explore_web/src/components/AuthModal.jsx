@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   signInWithEmail,
   signUpWithEmail,
   signInWithGoogle,
+  getProfile,
+  profileNeedsPhone,
   authMessage,
 } from '../services/auth.js';
+import { detectCountryIso, formatPhone } from '../lib/countries.js';
+import PhoneField from './PhoneField.jsx';
+import AddressField from './AddressField.jsx';
+import CompleteProfileModal from './CompleteProfileModal.jsx';
+import ForgotPasswordModal from './ForgotPasswordModal.jsx';
 
 // Sign-in / create-account sheet. Shown when a shopper needs a full account
 // (e.g. at checkout). On success the anonymous session is upgraded in place, so
 // the cart carries over, then `onSuccess` runs (e.g. continue to checkout).
 export default function AuthModal({ reason, onClose, onSuccess }) {
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  const [step, setStep] = useState('auth'); // 'auth' | 'complete' | 'forgot'
+  const [googleName, setGoogleName] = useState('');
+  const [countryIso, setCountryIso] = useState(() => detectCountryIso());
+  const [phoneLocal, setPhoneLocal] = useState('');
   const [form, setForm] = useState({ name: '', email: '', address: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -18,10 +29,26 @@ export default function AuthModal({ reason, onClose, onSuccess }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const isSignup = mode === 'signup';
 
+  // Default phone country when switching to signup.
+  useEffect(() => {
+    if (isSignup) setCountryIso(detectCountryIso());
+  }, [isSignup]);
+
   const finish = () => {
     setBusy(false);
     onSuccess?.();
     onClose();
+  };
+
+  const afterGoogle = async (user) => {
+    const profile = await getProfile(user.uid);
+    if (profileNeedsPhone(profile)) {
+      setGoogleName(user.displayName || '');
+      setStep('complete');
+      setBusy(false);
+      return;
+    }
+    finish();
   };
 
   const submit = async (e) => {
@@ -30,11 +57,23 @@ export default function AuthModal({ reason, onClose, onSuccess }) {
     setBusy(true);
     try {
       if (isSignup) {
+        const phone = formatPhone(countryIso, phoneLocal);
+        if (phone.length < 8) {
+          setError('Enter a valid phone number.');
+          setBusy(false);
+          return;
+        }
+        if (!form.address.trim()) {
+          setError('Add a delivery address or use location to detect it.');
+          setBusy(false);
+          return;
+        }
         await signUpWithEmail({
           email: form.email.trim(),
           password: form.password,
           name: form.name.trim(),
           address: form.address.trim(),
+          phone,
         });
       } else {
         await signInWithEmail(form.email.trim(), form.password);
@@ -50,13 +89,37 @@ export default function AuthModal({ reason, onClose, onSuccess }) {
     setError('');
     setBusy(true);
     try {
-      await signInWithGoogle();
-      finish();
+      const user = await signInWithGoogle();
+      await afterGoogle(user);
     } catch (err) {
       setError(authMessage(err));
       setBusy(false);
     }
   };
+
+  if (step === 'complete') {
+    return (
+      <CompleteProfileModal
+        userName={googleName}
+        onComplete={finish}
+      />
+    );
+  }
+
+  if (step === 'forgot') {
+    return (
+      <ForgotPasswordModal
+        onBack={() => {
+          setError('');
+          setStep('auth');
+        }}
+        onDone={() => {
+          setError('');
+          setStep('auth');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="auth-overlay" role="dialog" aria-modal="true" aria-label="Sign in">
@@ -80,20 +143,41 @@ export default function AuthModal({ reason, onClose, onSuccess }) {
           {isSignup && (
             <label className="auth-field">
               <span>Full name</span>
-              <input value={form.name} onChange={set('name')} placeholder="Amira Nakato" autoComplete="name" />
+              <input value={form.name} onChange={set('name')} placeholder="Amira Nakato" autoComplete="name" required />
             </label>
           )}
 
           <label className="auth-field">
             <span>Email</span>
-            <input type="email" value={form.email} onChange={set('email')} placeholder="you@email.com" autoComplete="email" />
+            <input type="email" value={form.email} onChange={set('email')} placeholder="you@email.com" autoComplete="email" required />
           </label>
 
           {isSignup && (
-            <label className="auth-field">
+            <div className="auth-field">
+              <span>Phone number</span>
+              <PhoneField
+                countryIso={countryIso}
+                nationalNumber={phoneLocal}
+                onCountryChange={setCountryIso}
+                onNumberChange={setPhoneLocal}
+                disabled={busy}
+                id="signup-phone"
+              />
+            </div>
+          )}
+
+          {isSignup && (
+            <div className="auth-field">
               <span>Delivery address</span>
-              <input value={form.address} onChange={set('address')} placeholder="Kampala, Uganda" autoComplete="street-address" />
-            </label>
+              <AddressField
+                value={form.address}
+                onChange={(v) => setForm((f) => ({ ...f, address: v }))}
+                onCountryDetected={setCountryIso}
+                disabled={busy}
+                autoDetectOnMount
+                id="signup-address"
+              />
+            </div>
           )}
 
           <label className="auth-field">
@@ -104,8 +188,22 @@ export default function AuthModal({ reason, onClose, onSuccess }) {
               onChange={set('password')}
               placeholder="••••••••"
               autoComplete={isSignup ? 'new-password' : 'current-password'}
+              required
             />
           </label>
+
+          {!isSignup && (
+            <button
+              type="button"
+              className="auth-forgot"
+              onClick={() => {
+                setError('');
+                setStep('forgot');
+              }}
+            >
+              Forgot password?
+            </button>
+          )}
 
           {error && <p className="auth-error">{error}</p>}
 

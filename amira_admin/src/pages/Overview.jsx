@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
-import { useCollection } from '../db.js';
+import { useCollection, usePaginatedCollection } from '../db.js';
 import { money } from '../utils.js';
 
 export default function Overview() {
@@ -11,6 +11,11 @@ export default function Overview() {
   const { data: products } = useCollection('products');
   const { data: appointments } = useCollection('appointments');
   const { data: conversations } = useCollection('conversations');
+  const { data: renders } = usePaginatedCollection('renders', {
+    orderByField: 'createdAt',
+    orderDir: 'desc',
+    pageSize: 100,
+  });
 
   const revenue = useMemo(
     () => orders.reduce((s, o) => s + (o.total || 0), 0),
@@ -19,11 +24,15 @@ export default function Overview() {
   const openConvos = conversations.filter((c) => c.status === 'open').length;
   const pendingAppts = appointments.filter((a) => a.status === 'requested').length;
   const lowStock = products.filter((p) => p.status && p.status !== 'active').length;
+  const renders7d = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return renders.filter((r) => (r.createdAt?.toMillis?.() ?? 0) >= cutoff).length;
+  }, [renders]);
 
   const stats = [
     { label: 'Revenue', value: money(revenue), foot: `${orders.length} orders` },
     { label: 'Customers', value: users.length, foot: 'Active accounts' },
-    { label: 'Products', value: products.length, foot: 'In catalogue' },
+    { label: 'Renders (7d)', value: renders7d, foot: `${renders.length} loaded` },
     { label: 'Open chats', value: openConvos, foot: `${conversations.length} total` },
   ];
 
@@ -87,6 +96,10 @@ export default function Overview() {
             <Link to="/appointments" className="attention-item">
               <span className="attention-num serif-num">{pendingAppts}</span>
               <span className="attention-text">Appointment requests to confirm</span>
+            </Link>
+            <Link to="/renders" className="attention-item">
+              <span className="attention-num serif-num">{renders7d}</span>
+              <span className="attention-text">Visual Studio renders this week</span>
             </Link>
             <Link to="/products" className="attention-item">
               <span className="attention-num serif-num">{lowStock}</span>

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import '../app_shell_controller.dart';
 import '../models/app_user.dart';
 import '../models/portfolio.dart';
 import '../services/auth_service.dart';
 import '../services/portfolio_service.dart';
 import '../widgets/product_image.dart';
 import '../widgets/shimmer.dart';
+import '../services/notification_service.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
 
@@ -101,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen>
   final CardSwiperController _swiperController = CardSwiperController();
   bool _imagesCached = false;
   late AnimationController _borderAnimationController;
+  final TextEditingController _agentSearchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -137,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _agentSearchCtrl.dispose();
     _swiperController.dispose();
     _borderAnimationController.dispose();
     super.dispose();
@@ -343,17 +347,24 @@ class _HomeScreenState extends State<HomeScreen>
                         color: _dark, size: 22),
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE74C3C),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                StreamBuilder<int>(
+                  stream: NotificationService.instance.watchUnreadCount(),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    if (count <= 0) return const SizedBox.shrink();
+                    return Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE74C3C),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -434,7 +445,9 @@ class _HomeScreenState extends State<HomeScreen>
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => AppShellController.of(context).openVisualStudio(
+                    source: 'home',
+                  ),
                   child: const Icon(Iconsax.gallery5,
                       color: Color(0xFF8B8B8B), size: 24),
                 ),
@@ -445,14 +458,25 @@ class _HomeScreenState extends State<HomeScreen>
                       color: Color(0xFF8B8B8B), size: 24),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: TextField(
-                    style: TextStyle(
+                    controller: _agentSearchCtrl,
+                    onSubmitted: (text) {
+                      final t = text.trim();
+                      if (t.isEmpty) return;
+                      AppShellController.of(context).openAgent(
+                        seedMessage: t,
+                        source: 'home_search',
+                        autoSend: true,
+                      );
+                      _agentSearchCtrl.clear();
+                    },
+                    style: const TextStyle(
                         fontFamily: 'Satoshi',
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: _dark),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       hintText: 'Ask Amira agent',
                       hintStyle: TextStyle(
                         color: Color(0xFFB8B8B8),
@@ -467,15 +491,27 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1A1A1A),
-                    shape: BoxShape.circle,
+                GestureDetector(
+                  onTap: () {
+                    final t = _agentSearchCtrl.text.trim();
+                    if (t.isEmpty) return;
+                    AppShellController.of(context).openAgent(
+                      seedMessage: t,
+                      source: 'home_search',
+                      autoSend: true,
+                    );
+                    _agentSearchCtrl.clear();
+                  },
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1A1A1A),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_upward_rounded,
+                        color: Colors.white, size: 22),
                   ),
-                  child: const Icon(Icons.arrow_upward_rounded,
-                      color: Colors.white, size: 22),
                 ),
               ],
             ),

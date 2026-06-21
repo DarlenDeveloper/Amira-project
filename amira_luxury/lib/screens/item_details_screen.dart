@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/appointment_service.dart';
 import '../services/order_service.dart';
 import '../services/shop_service.dart';
 import '../utils/currency.dart';
+import '../utils/product_colors.dart';
 import '../widgets/product_image.dart';
-import 'visual_studio_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -23,9 +24,17 @@ class ItemDetailsScreen extends StatefulWidget {
 
 class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   int _qty = 1;
+  ProductColor? _selectedColor;
 
   Product get _product => widget.product;
   double get _total => _product.value * _qty;
+  bool get _hasColors => _product.colors.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedColor = _product.colors.isNotEmpty ? _product.colors.first : null;
+  }
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -43,9 +52,18 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       _snack('${_product.name} is currently out of stock');
       return;
     }
-    await ShopService.instance.addToCart(_product, qty: _qty);
+    if (_hasColors && _selectedColor == null) {
+      _snack('Please select a colour');
+      return;
+    }
+    await ShopService.instance.addToCart(
+      _product,
+      qty: _qty,
+      color: _selectedColor,
+    );
     if (!mounted) return;
-    _snack('Added $_qty × ${_product.name} to cart');
+    final colorNote = _selectedColor != null ? ' (${_selectedColor!.name})' : '';
+    _snack('Added $_qty × ${_product.name}$colorNote to cart');
   }
 
   Future<void> _placeOrder() async {
@@ -53,8 +71,16 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       _snack('${_product.name} is currently out of stock');
       return;
     }
+    if (_hasColors && _selectedColor == null) {
+      _snack('Please select a colour');
+      return;
+    }
     try {
-      await OrderService.instance.placeOrderForProduct(_product, _qty);
+      await OrderService.instance.placeOrderForProduct(
+        _product,
+        _qty,
+        color: _selectedColor,
+      );
       if (!mounted) return;
       _snack('Order placed for ${_product.name}');
     } catch (_) {
@@ -185,6 +211,84 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       ),
                     ),
                   ),
+
+                  if (_hasColors) ...[
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: Text(
+                        'COLOUR',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: _grey,
+                          fontFamily: 'Satoshi',
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: product.colors.map((c) {
+                          final active = _selectedColor?.name == c.name;
+                          return GestureDetector(
+                            onTap: () => setState(() => _selectedColor = c),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _white,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: active ? _gold : const Color(0xFFE4E4DE),
+                                  width: active ? 2 : 1.5,
+                                ),
+                                boxShadow: active
+                                    ? [
+                                        BoxShadow(
+                                          color: _gold.withOpacity(0.25),
+                                          blurRadius: 0,
+                                          spreadRadius: 2,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      color: _parseColor(c.hex),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.black.withOpacity(0.12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    c.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _dark,
+                                      fontFamily: 'Satoshi',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -273,15 +377,49 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                 child: _SlideToAction(
                   label: 'Visualise with AI',
                   onComplete: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const VisualStudioScreen(),
-                      ),
+                    final shell = AppShellController.of(context);
+                    Navigator.of(context).pop();
+                    shell.openVisualStudio(
+                      product: _product,
+                      source: 'item_details',
                     );
                   },
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () {
+              final shell = AppShellController.of(context);
+              Navigator.of(context).pop();
+              shell.openAgent(
+                productId: _product.id,
+                seedMessage: 'Tell me about ${_product.name}',
+                source: 'product_ask',
+                autoSend: true,
+              );
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: _white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: _gold, width: 1.5),
+              ),
+              child: const Center(
+                child: Text(
+                  'Ask Amira about this',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           // Order + Book Appointment (wired in the Orders / Appointments phases)
@@ -341,6 +479,16 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       ),
     );
   }
+}
+
+Color _parseColor(String hex) {
+  var h = hex.trim();
+  if (!h.startsWith('#')) h = '#$h';
+  if (h.length == 7) {
+    final v = int.tryParse(h.substring(1), radix: 16);
+    if (v != null) return Color(0xFF000000 | v);
+  }
+  return const Color(0xFF888888);
 }
 
 class _QtyStepper extends StatelessWidget {

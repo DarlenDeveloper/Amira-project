@@ -11,6 +11,7 @@ import {
   clearCart as clearCartSvc,
   setFavourite as setFavouriteSvc,
 } from '../services/cart.js';
+import { watchNotifications, watchReadIds } from '../services/notifications.js';
 
 const ShopContext = createContext(null);
 
@@ -30,6 +31,8 @@ export function ShopProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [favourites, setFavourites] = useState(new Set());
   const [heroImages, setHeroImages] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [readNotificationIds, setReadNotificationIds] = useState(() => new Set());
 
   // Auth — resolves to an anonymous user on first load.
   useEffect(() => {
@@ -80,6 +83,21 @@ export function ShopProvider({ children }) {
     return watchPortfolioImages((items) => setHeroImages(items.map((i) => i.imageUrl)));
   }, [user?.uid]);
 
+  // Broadcast notifications — public read; guests (anonymous) included.
+  useEffect(() => {
+    const unsubFeed = watchNotifications(user?.uid ?? null, setNotifications);
+    let unsubRead = () => {};
+    if (user?.uid) {
+      unsubRead = watchReadIds(user.uid, setReadNotificationIds);
+    } else {
+      setReadNotificationIds(new Set());
+    }
+    return () => {
+      unsubFeed();
+      unsubRead();
+    };
+  }, [user?.uid]);
+
   const categories = useMemo(() => categoriesOf(products), [products]);
 
   const cartCount = useMemo(
@@ -90,15 +108,19 @@ export function ShopProvider({ children }) {
     () => cart.reduce((s, l) => s + l.value * l.qty, 0),
     [cart],
   );
+  const notificationUnreadCount = useMemo(
+    () => notifications.filter((n) => !readNotificationIds.has(n.id)).length,
+    [notifications, readNotificationIds],
+  );
 
   // ── Actions (no-ops until a uid exists) ───────────────────────────────────
   const requireUid = () => user?.uid ?? null;
 
   const actions = useMemo(
     () => ({
-      addToCart: (product, qty = 1) => {
+      addToCart: (product, qty = 1, color = null) => {
         const uid = requireUid();
-        return uid ? addToCartSvc(uid, product, qty) : Promise.resolve();
+        return uid ? addToCartSvc(uid, product, qty, color) : Promise.resolve();
       },
       setQty: (productId, qty) => {
         const uid = requireUid();
@@ -135,6 +157,8 @@ export function ShopProvider({ children }) {
     cartSubtotal,
     favourites,
     heroImages,
+    notifications,
+    notificationUnreadCount,
     ...actions,
   };
 

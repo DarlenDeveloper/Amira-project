@@ -54,12 +54,15 @@ class AppointmentService {
         : (user.displayName?.trim().isNotEmpty ?? false)
             ? user.displayName!.trim()
             : 'Amira Member';
-    final email = profile?.email ?? profile?.phone ?? user.email ?? '';
+    final phone = profile?.phone?.trim() ?? '';
+    final rawEmail = profile?.email ?? user.email ?? '';
+    final email = rawEmail.contains('@phone.amira.app') ? '' : rawEmail;
 
     await _appointments.add({
       'appointmentId': _newRef(),
       'uid': user.uid,
       'customer': customer,
+      'phone': phone,
       'email': email,
       'type': type,
       'date': '',

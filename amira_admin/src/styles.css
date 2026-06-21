@@ -246,6 +246,12 @@ body { margin: 0; }
   overflow: hidden;
 }
 .table-card--flush { border-radius: 12px; }
+.table-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  -webkit-overflow-scrolling: touch;
+}
+.data-table--wide { min-width: 980px; }
 
 .data-table {
   width: 100%;
@@ -432,6 +438,13 @@ body { margin: 0; }
 .convo-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .convo-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .convo-time { font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+.convo-contact {
+  font-size: 12px;
+  color: #6f6b65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .convo-preview {
   font-size: 13px;
   color: var(--muted);
@@ -957,6 +970,65 @@ body { margin: 0; }
 }
 .img-add:hover { border-color: #b5945a; color: #b5945a; }
 
+/* ── Colour editor (product form) ─────────────────────────────────────────── */
+.form-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #8b8b8b;
+  line-height: 1.4;
+}
+.color-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.color-picker {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid #e4e4de;
+  border-radius: 10px;
+  cursor: pointer;
+  background: none;
+}
+.color-name {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e4e4de;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.color-remove {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: #f0efea;
+  color: #8b8b8b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.color-remove:hover { background: #e8e6df; color: #2a2a2a; }
+.color-add {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border: 1.5px dashed #cfcfc8;
+  border-radius: 10px;
+  background: transparent;
+  color: #8b8b8b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.color-add:hover { border-color: #b5945a; color: #b5945a; }
+
 /* ── AI Agent page ────────────────────────────────────────────────────────── */
 .agent-layout {
   display: grid;
@@ -1117,4 +1189,20 @@ body { margin: 0; }
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ── Detail drawer (appointments, renders) ─────────────────────────────────── */
+.drawer-panel {
+  background: #fff;
+  border: 1px solid #e6e5df;
+  border-radius: 16px;
+  padding: 22px 24px;
+}
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.data-table tr.row--active td {
+  background: #faf8f3;
 }

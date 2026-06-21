@@ -12,13 +12,14 @@ const manage = [
   { to: '/orders', label: 'Orders', Icon: OrdersIcon },
   { to: '/customers', label: 'Customers', Icon: CustomersIcon },
   { to: '/conversations', label: 'Conversations', Icon: ChatIcon },
+  { to: '/renders', label: 'Visual Studio', Icon: PortfolioIcon },
   { to: '/appointments', label: 'Appointments', Icon: CalendarIcon },
   { to: '/notifications', label: 'Notifications', Icon: BellIcon },
   { to: '/agent', label: 'AI Agent', Icon: AgentIcon },
+  { to: '/analytics', label: 'Analytics', Icon: AnalyticsIcon },
 ];
 
 const comingSoon = [
-  { label: 'Analytics', Icon: AnalyticsIcon },
   { label: 'Settings', Icon: SettingsIcon },
 ];
 

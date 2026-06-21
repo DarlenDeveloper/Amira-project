@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useShop } from '../context/ShopContext.jsx';
 import { signOut } from '../services/auth.js';
-import { watchProfile, displayName, displayEmail } from '../services/profile.js';
+import { watchProfile, displayName, displayEmail, displayPhone } from '../services/profile.js';
 import { watchMyOrders } from '../services/orders.js';
 import { formatUgx } from '../lib/currency.js';
 
@@ -36,6 +36,7 @@ export default function ProfilePage({ onClose }) {
 
   const name = displayName(user, profile);
   const email = displayEmail(user, profile);
+  const phone = displayPhone(profile);
   const photo = profile?.photoUrl || user?.photoURL;
   const initial = name.charAt(0).toUpperCase();
 
@@ -81,6 +82,7 @@ export default function ProfilePage({ onClose }) {
             <div className="profile-identity">
               <p className="profile-name">{name}</p>
               {email && <p className="profile-email">{email}</p>}
+              {phone && <p className="profile-phone">{phone}</p>}
               <span className="profile-badge">Signed in</span>
             </div>
           </div>

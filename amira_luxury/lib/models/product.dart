@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../utils/currency.dart';
+import '../utils/product_colors.dart';
 
 /// Availability of a product, mirrors the admin `status` field.
 enum ProductStatus { active, low, out, unknown }
@@ -38,6 +39,7 @@ class Product {
   final int stock;
   final ProductStatus status;
   final int order;
+  final List<ProductColor> colors;
 
   const Product({
     required this.id,
@@ -54,6 +56,7 @@ class Product {
     required this.stock,
     required this.status,
     required this.order,
+    this.colors = const [],
   });
 
   /// Display price, e.g. "From UGX 56 / sqm".
@@ -80,6 +83,7 @@ class Product {
       stock: (data['stock'] as num?)?.toInt() ?? 0,
       status: _statusFromString(data['status'] as String?),
       order: (data['order'] as num?)?.toInt() ?? 0,
+      colors: parseProductColors(data['colors'] as List<dynamic>?),
     );
   }
 
@@ -98,6 +102,7 @@ class Product {
       'stock': stock,
       'status': status.name,
       'order': order,
+      if (colors.isNotEmpty) 'colors': colors.map((c) => c.toMap()).toList(),
     };
   }
 }

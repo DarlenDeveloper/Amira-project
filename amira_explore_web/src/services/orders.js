@@ -14,6 +14,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
+import { baseProductId } from '../lib/productColors.js';
 
 export const DELIVERY_FEE = 30;
 
@@ -21,12 +22,13 @@ const ordersCol = () => collection(db, 'orders');
 
 function orderItem(line) {
   return {
-    productId: line.productId,
+    productId: baseProductId(line.productId),
     name: line.name,
     ...(line.imageUrl ? { imageUrl: line.imageUrl } : {}),
     unit: line.unit,
     value: line.value,
     qty: line.qty,
+    ...(line.colorName ? { colorName: line.colorName, colorHex: line.colorHex } : {}),
   };
 }
 
@@ -82,7 +84,7 @@ export async function placeOrderFromCart(lines) {
 }
 
 /** Places an order for a single product at the chosen quantity (no delivery). */
-export async function placeOrderForProduct(product, qty) {
+export async function placeOrderForProduct(product, qty, color = null) {
   const item = orderItem({
     productId: product.id,
     name: product.name,
@@ -90,6 +92,7 @@ export async function placeOrderForProduct(product, qty) {
     unit: product.unit,
     value: product.value,
     qty,
+    ...(color?.name ? { colorName: color.name, colorHex: color.hex } : {}),
   });
   await create([item], item.value * item.qty);
 }

@@ -26,6 +26,11 @@ export function displayName(user, profile) {
 }
 
 /** Email or phone for display. */
+export function displayPhone(profile) {
+  return profile?.phone?.trim() || '';
+}
+
+/** Email for display. */
 export function displayEmail(user, profile) {
-  return profile?.email || user?.email || profile?.phone || '';
+  return profile?.email || user?.email || '';
 }

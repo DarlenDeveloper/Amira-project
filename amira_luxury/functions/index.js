@@ -8,18 +8,21 @@
 // the app or repo. Set it with:
 //   firebase functions:secrets:set GEMINI_API_KEY
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleGenAI } from '@google/genai';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 
 initializeApp();
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
-// Deploy marker: ensure public invoker binding for the callable.
+const RENDER_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 async function fetchInlineImage(url) {
   const res = await fetch(url);
@@ -28,6 +31,135 @@ async function fetchInlineImage(url) {
   const mimeType = res.headers.get('content-type') || 'image/jpeg';
   return { inlineData: { mimeType, data: buf.toString('base64') } };
 }
+
+async function resolveUserProfile(db, uid) {
+  let customer = 'Amira Member';
+  let email = '';
+  let phone = '';
+  try {
+    const userSnap = await db.collection('users').doc(uid).get();
+    const u = userSnap.exists ? userSnap.data() : {};
+    phone = (u.phone && String(u.phone).trim()) || '';
+    const rawEmail = (u.email && String(u.email).trim()) || '';
+    email = rawEmail.includes('@phone.amira.app') ? '' : rawEmail;
+    const name = (u.name && String(u.name).trim()) || '';
+    customer = name || phone || (email ? email.split('@')[0] : '') || customer;
+  } catch (e) {
+    console.warn('user lookup failed:', e.message);
+  }
+  return { customer, email, phone };
+}
+
+function buildDownloadUrl(bucket, filePath, token) {
+  return (
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+    `${encodeURIComponent(filePath)}?alt=media&token=${token}`
+  );
+}
+
+async function mirrorRenderDoc(db, renderId, data) {
+  const uid = data.uid;
+  if (!uid) return;
+  await db
+    .collection('users')
+    .doc(uid)
+    .collection('renders')
+    .doc(renderId)
+    .set(data, { merge: true });
+}
+
+async function setRenderDoc(db, renderId, patch) {
+  const ref = db.collection('renders').doc(renderId);
+  await ref.set({ ...patch, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const snap = await ref.get();
+  if (snap.exists) {
+    await mirrorRenderDoc(db, renderId, { id: renderId, ...snap.data() });
+  }
+}
+
+// ── Visual Studio session lifecycle ──────────────────────────────────────────
+
+export const startRenderSession = onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.');
+
+    const {
+      productIds = [],
+      materialNames = [],
+      source = 'tab',
+      prompt = '',
+    } = request.data || {};
+
+    const db = getFirestore();
+    const { customer, email, phone } = await resolveUserProfile(db, uid);
+    const renderRef = db.collection('renders').doc();
+    const renderId = renderRef.id;
+    const expiresAt = new Date(Date.now() + RENDER_SESSION_TTL_MS);
+
+    const doc = {
+      renderId,
+      uid,
+      customer,
+      email,
+      status: 'uploading',
+      source: String(source || 'tab'),
+      productIds: Array.isArray(productIds) ? productIds.slice(0, 5) : [],
+      materialNames: Array.isArray(materialNames) ? materialNames.slice(0, 5) : [],
+      prompt: String(prompt || ''),
+      model: IMAGE_MODEL,
+      expiresAt,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    await renderRef.set(doc);
+    await mirrorRenderDoc(db, renderId, doc);
+
+    return { renderId };
+  },
+);
+
+export const registerRoomUpload = onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.');
+
+    const renderId = String(request.data?.renderId ?? '').trim();
+    const roomImageUrl = String(request.data?.roomImageUrl ?? '').trim();
+    if (!renderId || !roomImageUrl) {
+      throw new HttpsError('invalid-argument', 'renderId and roomImageUrl are required.');
+    }
+
+    const db = getFirestore();
+    const ref = db.collection('renders').doc(renderId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'Render session not found.');
+    }
+    const data = snap.data();
+    if (data.uid !== uid) {
+      throw new HttpsError('permission-denied', 'Not your render session.');
+    }
+    if (data.status !== 'uploading') {
+      throw new HttpsError(
+        'failed-precondition',
+        `Cannot register upload while status is "${data.status}".`,
+      );
+    }
+
+    const roomStoragePath = `visual-studio/${uid}/${renderId}/room.jpg`;
+    await setRenderDoc(db, renderId, {
+      status: 'ready',
+      roomStoragePath,
+      roomImageUrl,
+    });
+
+    return { ok: true };
+  },
+);
 
 export const generateRender = onCall(
   {
@@ -41,23 +173,125 @@ export const generateRender = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.');
 
     const {
-      roomImageUrl,
-      productImageUrls = [],
-      materialNames = [],
-      prompt = '',
+      roomImageUrl: roomImageUrlIn,
+      productImageUrls: legacyProductUrls = [],
+      materialNames: legacyMaterialNames = [],
+      prompt: legacyPrompt = '',
     } = request.data || {};
+    const renderId = String(request.data?.renderId ?? '').trim();
+    const forceRetry = request.data?.forceRetry === true;
 
+    // Legacy Play Store clients (no renderId) — keep old request shape working.
+    if (!renderId) {
+      const roomImageUrl = String(roomImageUrlIn ?? '').trim();
+      if (!roomImageUrl) {
+        throw new HttpsError('invalid-argument', 'renderId or roomImageUrl is required.');
+      }
+      return runLegacyGenerateRender(uid, {
+        roomImageUrl,
+        productImageUrls: legacyProductUrls,
+        materialNames: legacyMaterialNames,
+        prompt: legacyPrompt,
+      });
+    }
+
+    const db = getFirestore();
+    const ref = db.collection('renders').doc(renderId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'Render session not found.');
+    }
+    const data = snap.data();
+    if (data.uid !== uid) {
+      throw new HttpsError('permission-denied', 'Not your render session.');
+    }
+
+    if (data.status === 'completed' && data.resultUrl) {
+      return { resultUrl: data.resultUrl, renderId };
+    }
+    if (data.status === 'generating') {
+      throw new HttpsError(
+        'failed-precondition',
+        'A render is already in progress for this session.',
+      );
+    }
+    if (data.status === 'uploading') {
+      throw new HttpsError(
+        'failed-precondition',
+        'Room photo has not been uploaded yet.',
+      );
+    }
+    if (data.status === 'failed' && !forceRetry) {
+      throw new HttpsError(
+        'failed-precondition',
+        'This session failed. Pass forceRetry to try again.',
+      );
+    }
+    if (data.status !== 'ready' && !(data.status === 'failed' && forceRetry)) {
+      throw new HttpsError(
+        'failed-precondition',
+        `Cannot generate while status is "${data.status}".`,
+      );
+    }
+
+    const roomImageUrl = data.roomImageUrl;
     if (!roomImageUrl) {
-      throw new HttpsError('invalid-argument', 'roomImageUrl is required.');
+      throw new HttpsError('failed-precondition', 'No room image on this session.');
+    }
+
+    const productIds = data.productIds || [];
+    const materialNames = data.materialNames || [];
+    const prompt = data.prompt || '';
+
+    // Atomically claim the session.
+    try {
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(ref);
+        if (!fresh.exists) throw new HttpsError('not-found', 'Render session not found.');
+        const s = fresh.data().status;
+        if (s === 'completed') return;
+        if (s === 'generating') {
+          throw new HttpsError('failed-precondition', 'Render already in progress.');
+        }
+        if (s !== 'ready' && !(s === 'failed' && forceRetry)) {
+          throw new HttpsError('failed-precondition', `Invalid status "${s}".`);
+        }
+        tx.set(
+          ref,
+          { status: 'generating', updatedAt: FieldValue.serverTimestamp() },
+          { merge: true },
+        );
+      });
+    } catch (e) {
+      if (e instanceof HttpsError) throw e;
+      throw e;
+    }
+
+    // Re-check after transaction (another caller may have completed).
+    const afterClaim = (await ref.get()).data();
+    if (afterClaim.status === 'completed' && afterClaim.resultUrl) {
+      return { resultUrl: afterClaim.resultUrl, renderId };
+    }
+
+    // Load product image URLs from catalogue when productIds present.
+    let productImageUrls = [];
+    if (productIds.length) {
+      for (const pid of productIds.slice(0, 5)) {
+        try {
+          const pSnap = await db.collection('products').doc(pid).get();
+          if (pSnap.exists) {
+            const url = pSnap.data().imageUrl;
+            if (url) productImageUrls.push(url);
+          }
+        } catch (e) {
+          console.warn('skip product image:', pid, e.message);
+        }
+      }
     }
 
     try {
-      console.log('generateRender:start', {
-        products: productImageUrls.length,
-        materials: materialNames,
-      });
+      console.log('generateRender:start', { renderId, products: productImageUrls.length });
 
-      // Build the multimodal request: room first, then product references.
       const room = await fetchInlineImage(roomImageUrl);
       const products = [];
       for (const url of productImageUrls.slice(0, 5)) {
@@ -67,14 +301,8 @@ export const generateRender = onCall(
           console.warn('skip reference image:', e.message);
         }
       }
-      console.log('generateRender:images', {
-        room: !!room,
-        refs: products.length,
-      });
 
-      const names = materialNames.length
-        ? ` (${materialNames.join(', ')})`
-        : '';
+      const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
       const instruction =
         'You are an interior design visualiser for Amira Interiors, a luxury ' +
         'East African interiors brand. Edit the FIRST image — the user\'s room ' +
@@ -85,7 +313,6 @@ export const generateRender = onCall(
         (prompt ? ' User preferences: ' + prompt : '');
 
       const parts = [{ text: instruction }, room, ...products];
-
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
         model: IMAGE_MODEL,
@@ -94,14 +321,6 @@ export const generateRender = onCall(
 
       const cand = response?.candidates?.[0];
       const partsOut = cand?.content?.parts ?? [];
-      console.log('generateRender:response', {
-        finishReason: cand?.finishReason,
-        partKinds: partsOut.map((p) =>
-          p.inlineData ? 'image' : p.text ? 'text' : 'other',
-        ),
-        promptFeedback: response?.promptFeedback,
-      });
-
       const imgPart = partsOut.find((p) => p.inlineData?.data);
       if (!imgPart) {
         const textOut = partsOut.find((p) => p.text)?.text;
@@ -111,42 +330,140 @@ export const generateRender = onCall(
         );
       }
 
-      // Save the result with a download token so the app can load it by URL.
       const outBuf = Buffer.from(imgPart.inlineData.data, 'base64');
       const contentType = imgPart.inlineData.mimeType || 'image/png';
       const ext = contentType.includes('png') ? 'png' : 'jpg';
-      const filePath = `renders/${uid}/result_${Date.now()}.${ext}`;
+      const resultStoragePath = `visual-studio/${uid}/${renderId}/result.${ext}`;
       const token = randomUUID();
       const bucket = getStorage().bucket();
-      await bucket.file(filePath).save(outBuf, {
+      await bucket.file(resultStoragePath).save(outBuf, {
         metadata: {
           contentType,
           metadata: { firebaseStorageDownloadTokens: token },
         },
       });
-      const resultUrl =
-        `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
-        `${encodeURIComponent(filePath)}?alt=media&token=${token}`;
+      const resultUrl = buildDownloadUrl(bucket, resultStoragePath, token);
 
-      await getFirestore()
-        .collection('users')
-        .doc(uid)
-        .collection('renders')
-        .add({
-          roomImageUrl,
-          productImageUrls,
-          materialNames,
-          prompt,
-          resultUrl,
-          createdAt: FieldValue.serverTimestamp(),
-        });
+      await setRenderDoc(db, renderId, {
+        status: 'completed',
+        resultStoragePath,
+        resultUrl,
+        productImageUrls,
+        error: FieldValue.delete(),
+        completedAt: FieldValue.serverTimestamp(),
+      });
 
-      console.log('generateRender:done', filePath);
-      return { resultUrl };
+      console.log('generateRender:done', resultStoragePath);
+      return { resultUrl, renderId };
     } catch (e) {
       console.error('generateRender:failed', e?.message, e?.stack);
+      const errMsg = e?.message || 'Render failed.';
+      await setRenderDoc(db, renderId, {
+        status: 'failed',
+        error: errMsg,
+      });
       if (e instanceof HttpsError) throw e;
-      throw new HttpsError('internal', e?.message || 'Render failed.');
+      throw new HttpsError('internal', errMsg);
+    }
+  },
+);
+
+/** Play Store builds that call generateRender with roomImageUrl only (no session). */
+async function runLegacyGenerateRender(uid, {
+  roomImageUrl,
+  productImageUrls = [],
+  materialNames = [],
+  prompt = '',
+}) {
+  const db = getFirestore();
+  try {
+    const room = await fetchInlineImage(roomImageUrl);
+    const products = [];
+    for (const url of productImageUrls.slice(0, 5)) {
+      try {
+        products.push(await fetchInlineImage(url));
+      } catch (e) {
+        console.warn('legacy skip reference image:', e.message);
+      }
+    }
+    const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
+    const instruction =
+      'You are an interior design visualiser for Amira Interiors, a luxury ' +
+      'East African interiors brand. Edit the FIRST image — the user\'s room ' +
+      '— to apply the materials/finishes' + names + ' shown in the following ' +
+      'reference images. Preserve the room\'s architecture, perspective, ' +
+      'furniture and lighting; only change the relevant surfaces so the ' +
+      'result looks photorealistic and refined.' +
+      (prompt ? ' User preferences: ' + prompt : '');
+    const parts = [{ text: instruction }, room, ...products];
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: [{ role: 'user', parts }],
+    });
+    const imgPart = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
+    if (!imgPart) {
+      throw new HttpsError('internal', 'No image returned.');
+    }
+    const outBuf = Buffer.from(imgPart.inlineData.data, 'base64');
+    const contentType = imgPart.inlineData.mimeType || 'image/png';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const filePath = `renders/${uid}/result_${Date.now()}.${ext}`;
+    const token = randomUUID();
+    const bucket = getStorage().bucket();
+    await bucket.file(filePath).save(outBuf, {
+      metadata: {
+        contentType,
+        metadata: { firebaseStorageDownloadTokens: token },
+      },
+    });
+    const resultUrl = buildDownloadUrl(bucket, filePath, token);
+    await db
+      .collection('users')
+      .doc(uid)
+      .collection('renders')
+      .add({
+        roomImageUrl,
+        productImageUrls,
+        materialNames,
+        prompt,
+        resultUrl,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    return { resultUrl };
+  } catch (e) {
+    console.error('generateRender:legacy failed', e?.message);
+    if (e instanceof HttpsError) throw e;
+    throw new HttpsError('internal', e?.message || 'Render failed.');
+  }
+}
+
+export const cleanupStaleRenders = onSchedule(
+  { schedule: 'every 24 hours', region: 'us-central1' },
+  async () => {
+    const db = getFirestore();
+    const now = new Date();
+    const staleStatuses = ['uploading', 'ready', 'generating'];
+    for (const status of staleStatuses) {
+      const snap = await db
+        .collection('renders')
+        .where('status', '==', status)
+        .where('expiresAt', '<', now)
+        .limit(200)
+        .get();
+      for (const doc of snap.docs) {
+        const msg =
+          status === 'uploading'
+            ? 'Session timed out before upload completed'
+            : status === 'ready'
+              ? 'Session timed out before generation started'
+              : 'Session timed out during generation';
+        await setRenderDoc(db, doc.id, {
+          status: 'failed',
+          error: msg,
+        });
+      }
+      console.log('cleanupStaleRenders', status, snap.size);
     }
   },
 );
@@ -220,50 +537,96 @@ export const chatAgent = onCall(
     const message = String(request.data?.message ?? '').trim();
     if (!message) throw new HttpsError('invalid-argument', 'message is required.');
     let conversationId = request.data?.conversationId || null;
+    const productId = request.data?.productId
+      ? String(request.data.productId).trim()
+      : null;
+    const source = String(request.data?.source || 'typed');
+    const suggestionLabel = request.data?.suggestionLabel
+      ? String(request.data.suggestionLabel).trim()
+      : null;
 
     const db = getFirestore();
     const config = await loadAgentConfig(db);
-    if (!config.enabled) {
-      throw new HttpsError(
-        'failed-precondition',
-        'The Amira Agent is currently unavailable. Please try again later.',
-      );
-    }
 
-    // Resolve the customer's display details for the conversation header.
-    let customer = 'Amira Member';
-    let email = '';
-    try {
-      const userSnap = await db.collection('users').doc(uid).get();
-      const u = userSnap.exists ? userSnap.data() : {};
-      customer = (u.name && u.name.trim()) || customer;
-      email = u.email || u.phone || '';
-    } catch (e) {
-      console.warn('chatAgent: user lookup failed:', e.message);
-    }
+    const { customer, email, phone } = await resolveUserProfile(db, uid);
 
     // Ensure the conversation document exists (create on first message).
     const conversations = db.collection('conversations');
     let convRef;
+    let isNewConvo = false;
     if (conversationId) {
       convRef = conversations.doc(conversationId);
     } else {
-      convRef = await conversations.add({
-        uid,
-        customer,
-        email,
-        status: 'open',
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      isNewConvo = true;
+      convRef = conversations.doc();
       conversationId = convRef.id;
     }
     const messagesRef = convRef.collection('messages');
+
+    if (isNewConvo) {
+      await convRef.set({
+        uid,
+        customer,
+        email,
+        phone,
+        status: 'open',
+        source,
+        messageCount: 0,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    if (!config.enabled) {
+      const errText =
+        'The Amira Agent is currently unavailable. Please try again later.';
+      await messagesRef.add({
+        from: 'user',
+        text: message,
+        source,
+        productId: productId || null,
+        suggestionLabel,
+        status: 'sent',
+        time: FieldValue.serverTimestamp(),
+      });
+      await messagesRef.add({
+        from: 'system',
+        text: errText,
+        status: 'error',
+        error: 'agent_disabled',
+        time: FieldValue.serverTimestamp(),
+      });
+      await convRef.set(
+        {
+          lastMessage: errText,
+          lastFrom: 'system',
+          messageCount: FieldValue.increment(2),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      throw new HttpsError('failed-precondition', errText);
+    }
+
+    // Resolve product context for conversation header.
+    let productName = null;
+    if (productId) {
+      try {
+        const pSnap = await db.collection('products').doc(productId).get();
+        if (pSnap.exists) productName = pSnap.data().name || null;
+      } catch (e) {
+        console.warn('chatAgent: product lookup failed:', e.message);
+      }
+    }
 
     // Persist the user's message first.
     await messagesRef.add({
       from: 'user',
       text: message,
+      source,
+      productId: productId || null,
+      suggestionLabel,
+      status: 'sent',
       time: FieldValue.serverTimestamp(),
     });
 
@@ -274,6 +637,7 @@ export const chatAgent = onCall(
       history = histSnap.docs
         .map((d) => d.data())
         .reverse()
+        .filter((m) => m.from === 'user' || m.from === 'agent')
         .map((m) => ({
           role: m.from === 'user' ? 'user' : 'model',
           parts: [{ text: String(m.text ?? '') }],
@@ -283,10 +647,14 @@ export const chatAgent = onCall(
       history = [{ role: 'user', parts: [{ text: message }] }];
     }
 
-    const catalogue = await loadCatalogueContext(db);
+    let catalogue = await loadCatalogueContext(db);
+    if (productId && productName) {
+      catalogue += `\n\nThe user is asking about product: ${productName} (id: ${productId}).`;
+    }
     const systemInstruction = config.persona + catalogue;
 
     let reply;
+    let modelUsed = config.model;
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
@@ -301,30 +669,237 @@ export const chatAgent = onCall(
       reply = (response?.text ?? '').trim();
     } catch (e) {
       console.error('chatAgent: generation failed:', e?.message);
-      throw new HttpsError('internal', 'The agent could not respond right now.');
+      const errText = 'The agent could not respond right now.';
+      await messagesRef.add({
+        from: 'agent',
+        text: errText,
+        model: modelUsed,
+        status: 'error',
+        error: e?.message || 'generation_failed',
+        time: FieldValue.serverTimestamp(),
+      });
+      await convRef.set(
+        {
+          lastMessage: errText,
+          lastFrom: 'agent',
+          messageCount: FieldValue.increment(2),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      throw new HttpsError('internal', errText);
     }
 
     if (!reply) {
       reply = "I'm sorry, I didn't quite catch that. Could you rephrase?";
     }
 
-    // Persist the agent's reply and bump the thread (with a denormalised preview
-    // so the admin can show recent activity without a collection-group query).
     await messagesRef.add({
       from: 'agent',
       text: reply,
+      model: modelUsed,
+      status: 'sent',
       time: FieldValue.serverTimestamp(),
     });
     await convRef.set(
       {
+        customer,
+        email,
+        phone,
+        productId: productId || FieldValue.delete(),
+        productName: productName || FieldValue.delete(),
         lastMessage: reply,
         lastFrom: 'agent',
         lastUserMessage: message,
+        messageCount: FieldValue.increment(2),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
 
     return { conversationId, reply };
+  },
+);
+
+// ── Password reset (email OTP + phone-verified reset) ────────────────────────
+//
+// Email: requestPasswordResetOtp emails a 6-digit code (Resend). resetPasswordWithOtp
+// verifies the code and sets a new password via the Admin SDK.
+//
+// Phone: the web client verifies SMS OTP with Firebase Phone Auth, then calls
+// resetPasswordAfterPhoneVerification while signed in with that phone session.
+const PHONE_EMAIL_DOMAIN = 'phone.amira.app';
+const OTP_TTL_MS = 10 * 60 * 1000;
+const MAX_OTP_ATTEMPTS = 5;
+
+function emailDocId(email) {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+}
+
+function hashOtp(email, code) {
+  return createHash('sha256')
+    .update(`${email.trim().toLowerCase()}:${code}`)
+    .digest('hex');
+}
+
+function phoneToCredentialEmail(phoneE164) {
+  const digits = String(phoneE164).replace(/\D/g, '');
+  return `${digits}@${PHONE_EMAIL_DOMAIN}`;
+}
+
+async function sendOtpEmail(to, code, resendKey) {
+  const apiKey = resendKey || process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[Amira] RESEND_API_KEY not set — OTP for', to, ':', code);
+    if (process.env.FUNCTIONS_EMULATOR !== 'true') {
+      throw new HttpsError(
+        'failed-precondition',
+        'Email OTP is not configured. Try resetting with your phone number.',
+      );
+    }
+    return;
+  }
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Amira Luxury <onboarding@resend.dev>',
+      to: [to],
+      subject: 'Your Amira password reset code',
+      html:
+        `<p>Your password reset code is:</p>` +
+        `<p style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</p>` +
+        `<p>This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>`,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('[Amira] Resend failed:', res.status, body);
+    throw new HttpsError('internal', 'Could not send the reset code. Please try again.');
+  }
+}
+
+export const requestPasswordResetOtp = onCall(
+  { secrets: [RESEND_API_KEY], region: 'us-central1' },
+  async (request) => {
+    const email = String(request.data?.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      throw new HttpsError('invalid-argument', 'A valid email is required.');
+    }
+
+    // Always respond the same way so we don't leak which emails exist.
+    const generic = { sent: true };
+
+    let uid;
+    try {
+      const user = await getAuth().getUserByEmail(email);
+      uid = user.uid;
+      if (user.email?.endsWith(`@${PHONE_EMAIL_DOMAIN}`)) {
+        throw new HttpsError(
+          'failed-precondition',
+          'This account uses a phone number. Reset with your phone instead.',
+        );
+      }
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      return generic;
+    }
+
+    const code = String(randomInt(100000, 999999));
+    const db = getFirestore();
+    await db.collection('password_reset_otps').doc(emailDocId(email)).set({
+      uid,
+      email,
+      codeHash: hashOtp(email, code),
+      expiresAt: Date.now() + OTP_TTL_MS,
+      attempts: 0,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    try {
+      await sendOtpEmail(email, code, RESEND_API_KEY.value());
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      throw new HttpsError('internal', 'Could not send the reset code.');
+    }
+
+    if (process.env.FUNCTIONS_EMULATOR === 'true') {
+      return { ...generic, devOtp: code };
+    }
+    return generic;
+  },
+);
+
+export const resetPasswordWithOtp = onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const email = String(request.data?.email || '').trim().toLowerCase();
+    const code = String(request.data?.code || '').trim();
+    const newPassword = String(request.data?.newPassword || '');
+
+    if (!email || !code || code.length !== 6) {
+      throw new HttpsError('invalid-argument', 'Email and 6-digit code are required.');
+    }
+    if (newPassword.length < 6) {
+      throw new HttpsError('invalid-argument', 'Password must be at least 6 characters.');
+    }
+
+    const db = getFirestore();
+    const ref = db.collection('password_reset_otps').doc(emailDocId(email));
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'That code has expired. Request a new one.');
+    }
+
+    const data = snap.data();
+    if (Date.now() > data.expiresAt) {
+      await ref.delete();
+      throw new HttpsError('deadline-exceeded', 'That code has expired. Request a new one.');
+    }
+    if (data.attempts >= MAX_OTP_ATTEMPTS) {
+      await ref.delete();
+      throw new HttpsError('resource-exhausted', 'Too many attempts. Request a new code.');
+    }
+
+    if (data.codeHash !== hashOtp(email, code)) {
+      await ref.update({ attempts: (data.attempts || 0) + 1 });
+      throw new HttpsError('invalid-argument', 'That code is incorrect.');
+    }
+
+    await getAuth().updateUser(data.uid, { password: newPassword });
+    await ref.delete();
+    return { success: true };
+  },
+);
+
+export const resetPasswordAfterPhoneVerification = onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const uid = request.auth?.uid;
+    const phone = request.auth?.token?.phone_number;
+    const newPassword = String(request.data?.newPassword || '');
+
+    if (!uid || !phone) {
+      throw new HttpsError('unauthenticated', 'Verify your phone with the SMS code first.');
+    }
+    if (newPassword.length < 6) {
+      throw new HttpsError('invalid-argument', 'Password must be at least 6 characters.');
+    }
+
+    const credentialEmail = phoneToCredentialEmail(phone);
+    let targetUid = uid;
+    try {
+      const mapped = await getAuth().getUserByEmail(credentialEmail);
+      targetUid = mapped.uid;
+    } catch {
+      // Phone-auth uid may already be the account if providers are linked.
+      targetUid = uid;
+    }
+
+    await getAuth().updateUser(targetUid, { password: newPassword });
+    return { success: true };
   },
 );

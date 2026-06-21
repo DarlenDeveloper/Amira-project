@@ -21,8 +21,12 @@ async function resolveCustomer(user) {
   }
   const customer =
     profile.name?.trim() || user.displayName?.trim() || 'Amira Member';
-  const email = profile.email || profile.phone || user.email || '';
-  return { customer, email };
+  const phone = profile.phone?.trim() || '';
+  const email =
+    profile.email?.trim() ||
+    (user.email?.includes('@phone.amira.app') ? '' : user.email?.trim()) ||
+    '';
+  return { customer, phone, email };
 }
 
 /**
@@ -36,11 +40,12 @@ export async function requestAppointment({ type = 'Design Consultation', aboutPr
     err.code = 'needs-account';
     throw err;
   }
-  const { customer, email } = await resolveCustomer(user);
+  const { customer, phone, email } = await resolveCustomer(user);
   await addDoc(collection(db, 'appointments'), {
     appointmentId: newRef(),
     uid: user.uid,
     customer,
+    phone,
     email,
     type,
     date: '',

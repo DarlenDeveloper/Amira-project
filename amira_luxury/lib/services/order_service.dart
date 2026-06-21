@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/cart_line.dart';
 import '../models/order.dart';
 import '../models/product.dart';
+import '../utils/product_colors.dart';
 import 'auth_service.dart';
 import 'shop_service.dart';
 
@@ -49,8 +50,12 @@ class OrderService {
   }
 
   /// Places an order for a single product at the chosen quantity.
-  Future<void> placeOrderForProduct(Product product, int qty) async {
-    final item = OrderItem.fromProduct(product, qty);
+  Future<void> placeOrderForProduct(
+    Product product,
+    int qty, {
+    ProductColor? color,
+  }) async {
+    final item = OrderItem.fromProduct(product, qty, color: color);
     await _create([item], item.lineTotal);
   }
 

@@ -92,6 +92,12 @@ export default function CartDrawer({ onClose, onRequireAccount }) {
                       </button>
                     </div>
                     <span className="cart-line-unit">{formatUgx(line.value)} / {line.unit}</span>
+                    {line.colorName && (
+                      <span className="cart-line-color">
+                        <span className="cart-color-dot" style={{ background: line.colorHex || '#888' }} />
+                        {line.colorName}
+                      </span>
+                    )}
                     <div className="cart-line-bottom">
                       <div className="qty-stepper qty-stepper--sm">
                         <button type="button" className="qty-btn" aria-label="Decrease" onClick={() => setQty(line.productId, line.qty - 1)}>−</button>

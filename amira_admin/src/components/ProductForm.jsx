@@ -23,6 +23,18 @@ const slugify = (s) =>
 let _imgKey = 0;
 const nextKey = () => `img-${Date.now()}-${_imgKey++}`;
 
+let _colorKey = 0;
+const nextColorKey = () => `color-${Date.now()}-${_colorKey++}`;
+
+function initialColors(initial) {
+  if (!Array.isArray(initial?.colors)) return [];
+  return initial.colors.map((c) => ({
+    key: nextColorKey(),
+    name: c.name || '',
+    hex: c.hex || '#888888',
+  }));
+}
+
 // Builds the initial gallery from an existing product's images / imageUrl.
 function initialImages(initial) {
   const urls = Array.isArray(initial?.images) && initial.images.length
@@ -48,6 +60,7 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
   });
   // Ordered gallery; first item is the primary image.
   const [images, setImages] = useState(() => initialImages(initial));
+  const [colors, setColors] = useState(() => initialColors(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -80,6 +93,16 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
       copy.unshift(item);
       return copy;
     });
+
+  const addColor = () =>
+    setColors((prev) => [...prev, { key: nextColorKey(), name: '', hex: '#888888' }]);
+
+  const updateColor = (key, field, value) =>
+    setColors((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, [field]: value } : c)),
+    );
+
+  const removeColor = (key) => setColors((prev) => prev.filter((c) => c.key !== key));
 
   const submit = async (e) => {
     e.preventDefault();
@@ -120,6 +143,14 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
         order: initial?.order ?? 0,
         images: urls,
         imageUrl: urls[0] ?? null, // primary — what the app displays
+        colors: colors
+          .map((c) => {
+            const name = c.name.trim();
+            let hex = c.hex.trim();
+            if (hex && !hex.startsWith('#')) hex = `#${hex}`;
+            return { name, hex };
+          })
+          .filter((c) => c.name),
       };
 
       if (isEdit) {
@@ -249,6 +280,36 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
             ))}
           </select>
         </label>
+
+        <div className="form-field">
+          <span>Available colours</span>
+          <p className="form-hint">Shoppers can pick a colour when adding to cart. Leave empty if not applicable.</p>
+          <div className="color-editor">
+            {colors.map((c) => (
+              <div className="color-row" key={c.key}>
+                <input
+                  type="color"
+                  className="color-picker"
+                  value={c.hex}
+                  onChange={(e) => updateColor(c.key, 'hex', e.target.value)}
+                  aria-label="Colour swatch"
+                />
+                <input
+                  className="color-name"
+                  value={c.name}
+                  onChange={(e) => updateColor(c.key, 'name', e.target.value)}
+                  placeholder="e.g. Ivory White"
+                />
+                <button type="button" className="color-remove" onClick={() => removeColor(c.key)} aria-label="Remove colour">
+                  ×
+                </button>
+              </div>
+            ))}
+            <button type="button" className="color-add" onClick={addColor}>
+              + Add colour
+            </button>
+          </div>
+        </div>
 
         <label className="form-field">
           <span>Short tagline</span>

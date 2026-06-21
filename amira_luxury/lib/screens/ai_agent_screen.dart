@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:iconsax/iconsax.dart';
+import '../app_shell_controller.dart';
+import '../models/product.dart';
 import '../services/agent_service.dart';
+import '../services/product_service.dart';
+import 'item_details_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -9,6 +13,7 @@ const _dark = Color(0xFF2A2A2A);
 const _grey = Color(0xFF8B8B8B);
 const _lightGrey = Color(0xFFE8E8E8);
 const _gold = Color(0xFFB5945A);
+const _lightGold = Color(0xFFF5EFE3);
 
 class AIAgentScreen extends StatefulWidget {
   const AIAgentScreen({super.key});
@@ -26,8 +31,12 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   // Live conversation state.
   String? _conversationId;
   bool _sending = false;
-  
-  // Typewriter animation
+  bool _agentEnabled = true;
+  List<String> _suggestions = [];
+  List<Product> _catalog = [];
+  String? _pendingProductId;
+  int _appliedIntentToken = 0;
+  AppShellController? _shell;
   String _displayedText = '';
   int _currentTextIndex = 0;
   final List<String> _typewriterTexts = [
@@ -41,6 +50,10 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     super.initState();
     _initAnimationController();
     _loadConfig();
+    ProductService.instance.watchProducts().listen((products) {
+      if (!mounted) return;
+      setState(() => _catalog = products);
+    });
     _focusNode.addListener(() {
       setState(() {}); // Rebuild when focus changes
     });
@@ -52,11 +65,45 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
 
   // Pulls the admin-tuned greeting so the welcome line matches what the brand
   // configured in the dashboard.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final shell = AppShellController.maybeOf(context);
+    if (shell != null && shell != _shell) {
+      _shell?.removeListener(_onShellChange);
+      _shell = shell;
+      _shell!.addListener(_onShellChange);
+      _applyShellIntent();
+    }
+  }
+
+  void _onShellChange() {
+    if (_shell?.currentIndex == 3) _applyShellIntent();
+  }
+
+  void _applyShellIntent() {
+    final shell = _shell;
+    if (shell == null) return;
+    final intent = shell.consumeAgentIntent();
+    if (intent == null || intent.token == _appliedIntentToken) return;
+    if (!mounted) return;
+    _appliedIntentToken = intent.token;
+    _pendingProductId = intent.productId;
+    if (intent.seedMessage != null && intent.seedMessage!.isNotEmpty) {
+      _textController.text = intent.seedMessage!;
+      if (intent.autoSend) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage());
+      }
+    }
+  }
+
   void _loadConfig() {
     AgentService.instance.loadConfig().then((config) {
       if (!mounted) return;
       setState(() {
         _typewriterTexts[2] = config.greeting;
+        _suggestions = config.suggestions;
+        _agentEnabled = config.enabled;
       });
     });
   }
@@ -103,13 +150,20 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     )..repeat();
   }
 
-  Future<void> _sendMessage() async {
-    final text = _textController.text.trim();
+  Future<void> _sendMessage({
+    String? overrideText,
+    String source = 'typed',
+    String? suggestionLabel,
+  }) async {
+    final text = (overrideText ?? _textController.text).trim();
     if (text.isEmpty || _sending) return;
+
+    final productId = _pendingProductId;
+    final msgSource = suggestionLabel != null ? 'suggestion' : source;
 
     setState(() {
       _messages.add({'text': text, 'isUser': true});
-      _textController.clear();
+      if (overrideText == null) _textController.clear();
       _sending = true;
     });
 
@@ -117,12 +171,16 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       final res = await AgentService.instance.sendMessage(
         message: text,
         conversationId: _conversationId,
+        productId: productId,
+        source: msgSource,
+        suggestionLabel: suggestionLabel,
       );
       if (!mounted) return;
       setState(() {
         _conversationId = res.conversationId ?? _conversationId;
         _messages.add({'text': res.reply, 'isUser': false});
         _sending = false;
+        _pendingProductId = null;
       });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -147,8 +205,21 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     }
   }
 
+  List<Product> _linkedProducts(String text) {
+    if (_catalog.isEmpty) return const [];
+    final found = <Product>[];
+    for (final p in _catalog) {
+      if (found.length >= 3) break;
+      if (p.name.isNotEmpty && text.contains(p.name)) {
+        found.add(p);
+      }
+    }
+    return found;
+  }
+
   @override
   void dispose() {
+    _shell?.removeListener(_onShellChange);
     _textController.dispose();
     _focusNode.dispose();
     _borderAnimationController?.dispose();
@@ -215,10 +286,16 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _messages.length,
-                    itemBuilder: (_, i) => _MessageBubble(
-                      text: _messages[i]['text'],
-                      isUser: _messages[i]['isUser'],
-                    ),
+                    itemBuilder: (_, i) {
+                      final msg = _messages[i];
+                      return _MessageBubble(
+                        text: msg['text'] as String,
+                        isUser: msg['isUser'] as bool,
+                        linkedProducts: msg['isUser'] as bool
+                            ? const []
+                            : _linkedProducts(msg['text'] as String),
+                      );
+                    },
                   ),
                 ),
               ] else ...[
@@ -257,6 +334,35 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                                 ),
                             ],
                           ),
+                          if (!_agentEnabled) ...[
+                            const SizedBox(height: 20),
+                            Text(
+                              'The Amira Agent is currently unavailable.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _grey.withOpacity(0.9),
+                                fontFamily: 'Satoshi',
+                              ),
+                            ),
+                          ],
+                          if (_suggestions.isNotEmpty) ...[
+                            const SizedBox(height: 28),
+                            ..._suggestions.take(6).map(
+                              (s) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _SuggestionChip(
+                                  text: s,
+                                  icon: Iconsax.message_text5,
+                                  onTap: () => _sendMessage(
+                                    overrideText: s,
+                                    source: 'suggestion',
+                                    suggestionLabel: s,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -377,10 +483,12 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
 class _MessageBubble extends StatelessWidget {
   final String text;
   final bool isUser;
+  final List<Product> linkedProducts;
 
   const _MessageBubble({
     required this.text,
     required this.isUser,
+    this.linkedProducts = const [],
   });
 
   @override
@@ -406,22 +514,65 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser ? _dark : _white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: isUser ? _white : _dark,
-                  fontFamily: 'Satoshi',
-                  height: 1.4,
+            child: Column(
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUser ? _dark : _white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: isUser ? _white : _dark,
+                      fontFamily: 'Satoshi',
+                      height: 1.4,
+                    ),
+                  ),
                 ),
-              ),
+                if (!isUser && linkedProducts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      for (final p in linkedProducts)
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ItemDetailsScreen(product: p),
+                            ),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _lightGold,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              p.name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _dark,
+                                fontFamily: 'Satoshi',
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
         ],

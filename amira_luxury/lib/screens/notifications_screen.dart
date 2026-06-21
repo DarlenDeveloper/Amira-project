@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:iconsax/iconsax.dart';
+
+import '../models/notification.dart';
+import '../services/notification_service.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -7,98 +12,60 @@ const _grey = Color(0xFF8B8B8B);
 const _gold = Color(0xFFB5945A);
 const _olive = Color(0xFF556B4A);
 
-class NotificationItem {
-  final String id;
+class _TypeStyle {
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
-  final String title;
-  final String body;
-  final String time;
-  bool isRead;
 
-  NotificationItem({
-    required this.id,
+  const _TypeStyle({
     required this.icon,
     required this.iconColor,
     required this.iconBg,
-    required this.title,
-    required this.body,
-    required this.time,
-    this.isRead = false,
   });
 }
 
-class NotificationsScreen extends StatefulWidget {
+_TypeStyle _styleFor(String type) {
+  switch (type) {
+    case 'offer':
+      return const _TypeStyle(
+        icon: Icons.local_offer_rounded,
+        iconColor: _gold,
+        iconBg: Color(0xFFF5EFE3),
+      );
+    case 'order':
+      return const _TypeStyle(
+        icon: Icons.check_circle_rounded,
+        iconColor: _olive,
+        iconBg: Color(0xFFEAEFE6),
+      );
+    case 'design':
+      return const _TypeStyle(
+        icon: Icons.auto_awesome_rounded,
+        iconColor: _gold,
+        iconBg: Color(0xFFF5EFE3),
+      );
+    case 'collection':
+    default:
+      return const _TypeStyle(
+        icon: Icons.collections_rounded,
+        iconColor: _gold,
+        iconBg: Color(0xFFF5EFE3),
+      );
+  }
+}
+
+class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  final List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      icon: Icons.collections_rounded,
-      iconColor: _gold,
-      iconBg: Color(0xFFF5EFE3),
-      title: 'New Collection Added',
-      body: 'Explore our latest PVC marble sheets and bamboo wall panels.',
-      time: '2 hours ago',
-    ),
-    NotificationItem(
-      id: '2',
-      icon: Icons.local_offer_rounded,
-      iconColor: _gold,
-      iconBg: Color(0xFFF5EFE3),
-      title: 'Exclusive Offer',
-      body: 'Enjoy 15% off your first design request this month.',
-      time: '1 day ago',
-    ),
-    NotificationItem(
-      id: '3',
-      icon: Icons.check_circle_rounded,
-      iconColor: _olive,
-      iconBg: Color(0xFFEAEFE6),
-      title: 'Request Received',
-      body: 'Your material request has been received by the Amira team.',
-      time: '2 days ago',
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '4',
-      icon: Icons.auto_awesome_rounded,
-      iconColor: _gold,
-      iconBg: Color(0xFFF5EFE3),
-      title: 'Your Design is Ready',
-      body: 'Your Interior Vision Studio render is ready to view.',
-      time: '3 days ago',
-      isRead: true,
-    ),
-  ];
-
-  void _markAsRead(String id) {
-    setState(() {
-      final item = _notifications.firstWhere((n) => n.id == id);
-      item.isRead = true;
-    });
-  }
-
-  void _delete(String id) {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == id);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(
           children: [
-            // Header with back button + centered title
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: Stack(
@@ -132,20 +99,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ],
               ),
             ),
-
             Expanded(
-              child: _notifications.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                      itemCount: _notifications.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _NotificationTile(
-                        item: _notifications[i],
-                        onMarkRead: () => _markAsRead(_notifications[i].id),
-                        onDelete: () => _delete(_notifications[i].id),
-                      ),
-                    ),
+              child: StreamBuilder<List<AmiraNotification>>(
+                stream: NotificationService.instance.watchForUser(uid: uid),
+                builder: (context, notifSnap) {
+                  if (notifSnap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(color: _gold, strokeWidth: 2),
+                    );
+                  }
+                  final notifications = notifSnap.data ?? const <AmiraNotification>[];
+                  if (notifications.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  if (uid == null) {
+                    return _NotificationList(
+                      notifications: notifications,
+                      readIds: const {},
+                    );
+                  }
+                  return StreamBuilder<Set<String>>(
+                    stream: NotificationService.instance.watchReadIds(uid),
+                    builder: (context, readSnap) {
+                      return _NotificationList(
+                        notifications: notifications,
+                        readIds: readSnap.data ?? const {},
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -165,7 +148,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: Color(0xFFF5EFE3),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.notifications_rounded, color: _gold, size: 38),
+            child: const Icon(Iconsax.notification5, color: _gold, size: 38),
           ),
           const SizedBox(height: 20),
           const Text(
@@ -193,23 +176,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
-  final NotificationItem item;
-  final VoidCallback onMarkRead;
-  final VoidCallback onDelete;
+class _NotificationList extends StatelessWidget {
+  final List<AmiraNotification> notifications;
+  final Set<String> readIds;
 
-  const _NotificationTile({
-    required this.item,
-    required this.onMarkRead,
-    required this.onDelete,
+  const _NotificationList({
+    required this.notifications,
+    required this.readIds,
   });
 
   @override
   Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      itemCount: notifications.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final item = notifications[i];
+        final isRead = readIds.contains(item.id);
+        return _NotificationTile(
+          item: item,
+          isRead: isRead,
+          onMarkRead: () => NotificationService.instance.markRead(item.id),
+        );
+      },
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  final AmiraNotification item;
+  final bool isRead;
+  final VoidCallback onMarkRead;
+
+  const _NotificationTile({
+    required this.item,
+    required this.isRead,
+    required this.onMarkRead,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _styleFor(item.type);
+    final time = NotificationService.instance.formatTimeAgo(item.sentAt);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: item.isRead ? _white.withOpacity(0.55) : _white,
+        color: isRead ? _white.withOpacity(0.55) : _white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -222,18 +236,16 @@ class _NotificationTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon chip
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: item.iconBg,
+              color: style.iconBg,
               shape: BoxShape.circle,
             ),
-            child: Center(child: Icon(item.icon, color: item.iconColor, size: 22)),
+            child: Center(child: Icon(style.icon, color: style.iconColor, size: 22)),
           ),
           const SizedBox(width: 14),
-          // Text content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +263,7 @@ class _NotificationTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (!item.isRead) ...[
+                    if (!isRead) ...[
                       const SizedBox(width: 8),
                       Container(
                         width: 8,
@@ -277,7 +289,7 @@ class _NotificationTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item.time,
+                  time,
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
@@ -288,12 +300,8 @@ class _NotificationTile extends StatelessWidget {
               ],
             ),
           ),
-          // 3-dot menu
-          _OptionsMenu(
-            isRead: item.isRead,
-            onMarkRead: onMarkRead,
-            onDelete: onDelete,
-          ),
+          if (!isRead)
+            _OptionsMenu(onMarkRead: onMarkRead),
         ],
       ),
     );
@@ -301,15 +309,9 @@ class _NotificationTile extends StatelessWidget {
 }
 
 class _OptionsMenu extends StatelessWidget {
-  final bool isRead;
   final VoidCallback onMarkRead;
-  final VoidCallback onDelete;
 
-  const _OptionsMenu({
-    required this.isRead,
-    required this.onMarkRead,
-    required this.onDelete,
-  });
+  const _OptionsMenu({required this.onMarkRead});
 
   @override
   Widget build(BuildContext context) {
@@ -321,40 +323,20 @@ class _OptionsMenu extends StatelessWidget {
       padding: EdgeInsets.zero,
       onSelected: (value) {
         if (value == 'read') onMarkRead();
-        if (value == 'delete') onDelete();
       },
       itemBuilder: (context) => [
-        if (!isRead)
-          PopupMenuItem<String>(
-            value: 'read',
-            child: Row(
-              children: const [
-                Icon(Icons.check_circle_rounded, size: 18, color: _dark),
-                SizedBox(width: 10),
-                Text(
-                  'Mark as read',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _dark,
-                    fontFamily: 'Satoshi',
-                  ),
-                ),
-              ],
-            ),
-          ),
         PopupMenuItem<String>(
-          value: 'delete',
+          value: 'read',
           child: Row(
             children: const [
-              Icon(Icons.delete_rounded, size: 18, color: Color(0xFFE74C3C)),
+              Icon(Icons.check_circle_rounded, size: 18, color: _dark),
               SizedBox(width: 10),
               Text(
-                'Delete',
+                'Mark as read',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFFE74C3C),
+                  color: _dark,
                   fontFamily: 'Satoshi',
                 ),
               ),

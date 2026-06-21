@@ -8,6 +8,7 @@ import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'orders_screen.dart';
 import 'appointments_screen.dart';
+import 'renders_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -25,6 +26,7 @@ class ProfileScreen extends StatelessWidget {
       _MenuEntry(Iconsax.profile_circle5, 'Manage Profile'),
       _MenuEntry(Iconsax.crown5, 'Subscription'),
       _MenuEntry(Iconsax.shopping_cart5, 'Orders'),
+      _MenuEntry(Iconsax.gallery5, 'My Renders'),
       _MenuEntry(Iconsax.calendar5, 'Appointments'),
     ]),
     _MenuSection('Security & Alerts', [
@@ -336,6 +338,12 @@ class ProfileScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const OrdersScreen(),
+                        ),
+                      );
+                    } else if (label == 'My Renders') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RendersScreen(),
                         ),
                       );
                     } else if (label == 'Appointments') {

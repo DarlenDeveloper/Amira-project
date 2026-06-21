@@ -112,6 +112,7 @@ App creates as `pending`. Admin advances status. App reads its own back
 appointmentId string  // "AP-2042"
 uid           string
 customer      string
+phone         string
 email         string
 type          string   // "Design Consultation" | "Site Visit" | "Showroom Visit"
 date          string    // or ts

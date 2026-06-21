@@ -8,6 +8,7 @@ import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/visual_studio_screen.dart';
 import 'screens/ai_agent_screen.dart';
+import 'app_shell_controller.dart';
 import 'screens/onboarding_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
@@ -107,48 +108,55 @@ class MainNavigator extends StatefulWidget {
 }
 
 class _MainNavigatorState extends State<MainNavigator> {
-  int _currentIndex = 0;
-  final PageController _pageController = PageController();
+  late final AppShellController _shell;
+  late final PageController _pageController;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const ExploreScreen(),
-    const VisualStudioScreen(),
-    const AIAgentScreen(),
-  ];
-
-  void _onNavTap(int index) {
-    setState(() => _currentIndex = index);
-    _pageController.jumpToPage(index);
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _shell = AppShellController(
+      onTabChange: (index) => _pageController.jumpToPage(index),
+    );
   }
 
   @override
   void dispose() {
+    _shell.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Hide the floating nav while the keyboard is open so it never collides
-    // with on-screen inputs (e.g. the AI agent's message bar).
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    return Scaffold(
-      extendBody: true,
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _screens,
-      ),
-      bottomNavigationBar: keyboardOpen
-          ? null
-          : Container(
-              color: Colors.transparent,
-              child: CustomBottomNav(
-                currentIndex: _currentIndex,
-                onTap: _onNavTap,
+    return AppShellScope(
+      controller: _shell,
+      child: Scaffold(
+        extendBody: true,
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: const [
+            HomeScreen(),
+            ExploreScreen(),
+            VisualStudioScreen(),
+            AIAgentScreen(),
+          ],
+        ),
+        bottomNavigationBar: keyboardOpen
+            ? null
+            : Container(
+                color: Colors.transparent,
+                child: ListenableBuilder(
+                  listenable: _shell,
+                  builder: (context, _) => CustomBottomNav(
+                    currentIndex: _shell.currentIndex,
+                    onTap: _shell.goToTab,
+                  ),
+                ),
               ),
-            ),
+      ),
     );
   }
 }

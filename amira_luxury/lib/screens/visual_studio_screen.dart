@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
+import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/render_service.dart';
+import '../services/shop_service.dart';
 import '../widgets/product_image.dart';
+import 'item_details_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
 const _white = Colors.white;
@@ -39,18 +42,54 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   StreamSubscription<List<Product>>? _catalogSub;
   final List<Product> _selected = [];
 
+  String? _renderId;
+  String _source = 'tab';
+  int _appliedIntentToken = 0;
+  bool _disposed = false;
+  AppShellController? _shell;
+
   @override
   void initState() {
     super.initState();
     _catalogSub = ProductService.instance.watchProducts().listen((products) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() {
         _catalog
           ..clear()
           ..addAll(products);
-        // Drop any selected items that no longer exist in the catalogue.
         _selected.removeWhere((s) => !products.any((p) => p.id == s.id));
       });
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final shell = AppShellController.maybeOf(context);
+    if (shell != null && shell != _shell) {
+      _shell?.removeListener(_onShellChange);
+      _shell = shell;
+      _shell!.addListener(_onShellChange);
+      _applyShellIntent();
+    }
+  }
+
+  void _onShellChange() {
+    if (_shell?.currentIndex == 2) _applyShellIntent();
+  }
+
+  void _applyShellIntent() {
+    final shell = _shell;
+    if (shell == null) return;
+    final intent = shell.consumeVisualStudioIntent();
+    if (intent == null || intent.token == _appliedIntentToken) return;
+    if (!mounted || _disposed) return;
+    setState(() {
+      _appliedIntentToken = intent.token;
+      _source = intent.source;
+      for (final p in intent.products) {
+        if (!_selected.any((s) => s.id == p.id)) _selected.add(p);
+      }
     });
   }
 
@@ -142,26 +181,41 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   Future<void> _upload() async {
     final picked = _picked;
     if (picked == null || _uploading) return;
+    final token = _shell?.sessionToken ?? 0;
     setState(() {
       _uploading = true;
       _progress = 0;
     });
     try {
+      final renderId = await RenderService.instance.startSession(
+        productIds: _selected.map((p) => p.id).toList(),
+        materialNames: _selected.map((p) => p.name).toList(),
+        source: _source,
+        prompt: _descCtrl.text.trim(),
+      );
+      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+
       final url = await RenderService.instance.uploadRoomImage(
+        renderId,
         File(picked.path),
         onProgress: (p) {
-          if (mounted) setState(() => _progress = p);
+          if (mounted && !_disposed) setState(() => _progress = p);
         },
       );
-      if (!mounted) return;
+      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+
+      await RenderService.instance.registerRoomUpload(renderId, url);
+      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+
       setState(() {
+        _renderId = renderId;
         _uploadedUrl = url;
         _uploading = false;
         _progress = 1;
       });
       _snack('Room photo uploaded');
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() => _uploading = false);
       _snack('Upload failed. Please try again.');
     }
@@ -175,39 +229,42 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       _progress = 0;
       _uploadedUrl = null;
       _resultUrl = null;
+      _renderId = null;
     });
   }
 
   Future<void> _generate() async {
-    final roomUrl = _uploadedUrl;
-    if (roomUrl == null || _generating) return;
+    final renderId = _renderId;
+    if (renderId == null || _generating) return;
+    final token = _shell?.sessionToken ?? 0;
     setState(() => _generating = true);
     try {
-      final names = _selected.map((m) => m.name).toList(growable: false);
-      final urls = _selected
-          .where((m) => m.imageUrl != null && m.imageUrl!.isNotEmpty)
-          .map((m) => m.imageUrl!)
-          .toList(growable: false);
-      final url = await RenderService.instance.generateRender(
-        roomImageUrl: roomUrl,
-        productImageUrls: urls,
-        materialNames: names,
-        prompt: _descCtrl.text.trim(),
-      );
-      if (!mounted) return;
+      final url = await RenderService.instance.generateRender(renderId: renderId);
+      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
       setState(() {
         _resultUrl = url;
         _generating = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _disposed) return;
       setState(() => _generating = false);
       _snack('Couldn\'t generate the render. Please try again.');
     }
   }
 
+  Future<void> _addSelectedToCart() async {
+    if (_selected.isEmpty) return;
+    for (final p in _selected) {
+      await ShopService.instance.addToCart(p);
+    }
+    if (!mounted) return;
+    _snack('Added ${_selected.length} material(s) to cart');
+  }
+
   @override
   void dispose() {
+    _disposed = true;
+    _shell?.removeListener(_onShellChange);
     _catalogSub?.cancel();
     _descCtrl.dispose();
     super.dispose();
@@ -544,6 +601,97 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                       },
                     ),
                   ),
+              ],
+
+              // Result actions
+              if (_resultUrl != null && _selected.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _addSelectedToCart,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _dark,
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Add to cart',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: _white,
+                                fontFamily: 'Satoshi',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => AppShellController.of(context).openExplore(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _white,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: _lightGrey),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'View in Explore',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: _dark,
+                                fontFamily: 'Satoshi',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final p in _selected)
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ItemDetailsScreen(product: p),
+                          ),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _lightGold,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            p.name,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _dark,
+                              fontFamily: 'Satoshi',
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
 
               const SizedBox(height: 24),

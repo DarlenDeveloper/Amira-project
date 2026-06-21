@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/shop_service.dart';
@@ -162,6 +163,50 @@ class _MaterialCard extends StatelessWidget {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ItemDetailsScreen(product: product),
+          ),
+        );
+      },
+      onLongPress: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: _white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Iconsax.magic_star5, color: _gold),
+                  title: const Text('Visualise with AI',
+                      style: TextStyle(fontFamily: 'Satoshi')),
+                  onTap: () {
+                    final shell = AppShellController.of(context);
+                    Navigator.of(ctx).pop();
+                    shell.openVisualStudio(
+                      product: product,
+                      source: 'explore',
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Iconsax.message_text5, color: _gold),
+                  title: const Text('Ask Amira about this',
+                      style: TextStyle(fontFamily: 'Satoshi')),
+                  onTap: () {
+                    final shell = AppShellController.of(context);
+                    Navigator.of(ctx).pop();
+                    shell.openAgent(
+                      productId: product.id,
+                      seedMessage: 'Tell me about ${product.name}',
+                      source: 'product_ask',
+                      autoSend: true,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },

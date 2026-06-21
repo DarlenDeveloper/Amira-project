@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader.jsx';
+import NotificationForm from '../components/NotificationForm.jsx';
 import { useCollection, formatDate } from '../db.js';
 
 const TYPE_LABEL = {
@@ -10,6 +11,7 @@ const TYPE_LABEL = {
 };
 
 export default function Notifications() {
+  const [showForm, setShowForm] = useState(false);
   const { data } = useCollection('notifications');
 
   const notifications = useMemo(() => {
@@ -25,8 +27,12 @@ export default function Notifications() {
       <PageHeader
         eyebrow="Engagement"
         title="Notifications"
-        subtitle={`${notifications.length} sent`}
-        action={<button className="primary-btn">+ New notification</button>}
+        subtitle={`${notifications.length} sent — visible on app & web (including guests)`}
+        action={(
+          <button type="button" className="primary-btn" onClick={() => setShowForm(true)}>
+            + New notification
+          </button>
+        )}
       />
 
       <div className="notif-list">
@@ -39,7 +45,7 @@ export default function Notifications() {
               </div>
               <p className="notif-body">{n.body}</p>
               <div className="notif-foot">
-                <span>To: {n.audience}</span>
+                <span>To: {n.audience === 'all' ? 'All users & guests' : n.audience}</span>
                 <span className="dot-sep">·</span>
                 <span>{(n.delivered ?? 0).toLocaleString()} delivered</span>
               </div>
@@ -47,7 +53,14 @@ export default function Notifications() {
             <span className="notif-time">{formatDate(n.sentAt)}</span>
           </article>
         ))}
+        {notifications.length === 0 && (
+          <p className="empty">No notifications yet. Send one to reach the app and web shop.</p>
+        )}
       </div>
+
+      {showForm && (
+        <NotificationForm onClose={() => setShowForm(false)} />
+      )}
     </div>
   );
 }

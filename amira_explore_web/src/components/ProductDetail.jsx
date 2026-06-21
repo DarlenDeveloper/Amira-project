@@ -15,6 +15,8 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
 
   const total = (data.value ?? 0) * qty;
   const soldOut = data.outOfStock;
+  const hasColors = data.colors?.length > 0;
+  const [selectedColor, setSelectedColor] = useState(null);
 
   const gallery = useMemo(
     () => (data.images?.length ? data.images : [data.image]),
@@ -28,6 +30,7 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
 
   useEffect(() => {
     setQty(1);
+    setSelectedColor(data.colors?.[0] ?? null);
     document.querySelector('.detail-scroll')?.scrollTo({ top: 0 });
   }, [data]);
 
@@ -39,10 +42,15 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
 
   const handleAddToCart = async () => {
     if (soldOut || busy) return;
+    if (hasColors && !selectedColor) {
+      showToast('Please select a colour');
+      return;
+    }
     setBusy(true);
     try {
-      await addToCart(data, qty);
-      showToast(`${data.name} added to cart`);
+      await addToCart(data, qty, selectedColor);
+      const colorNote = selectedColor ? ` (${selectedColor.name})` : '';
+      showToast(`${data.name}${colorNote} added to cart`);
     } catch {
       showToast('Could not add to cart. Please try again.');
     } finally {
@@ -59,9 +67,13 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
     if (soldOut) return;
     const orderQty = qty;
     runWhenAccount('Sign in or create an account to place your order.', async () => {
+      if (hasColors && !selectedColor) {
+        showToast('Please select a colour');
+        return;
+      }
       setBusy(true);
       try {
-        await placeOrderForProduct(data, orderQty);
+        await placeOrderForProduct(data, orderQty, selectedColor);
         showToast(`Order placed for ${data.name}`);
       } catch (err) {
         console.error('[Amira] Order failed:', err?.code, err?.message);
@@ -118,6 +130,31 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
             </p>
 
             {data.about && <p className="info-about">{data.about}</p>}
+
+            {hasColors && (
+              <div className="color-block">
+                <h3 className="color-title">Colour</h3>
+                <div className="color-swatches" role="listbox" aria-label="Select colour">
+                  {data.colors.map((c) => {
+                    const active = selectedColor?.name === c.name;
+                    return (
+                      <button
+                        type="button"
+                        key={c.name}
+                        role="option"
+                        aria-selected={active}
+                        className={`color-swatch${active ? ' color-swatch--active' : ''}`}
+                        onClick={() => setSelectedColor(c)}
+                        title={c.name}
+                      >
+                        <span className="color-swatch-dot" style={{ background: c.hex }} />
+                        <span className="color-swatch-name">{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {data.specs?.length > 0 && (
               <div className="spec-block">

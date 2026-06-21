@@ -40,6 +40,9 @@ class AgentService {
   Future<AgentReply> sendMessage({
     required String message,
     String? conversationId,
+    String? productId,
+    String source = 'typed',
+    String? suggestionLabel,
   }) async {
     final callable = _functions.httpsCallable(
       'chatAgent',
@@ -48,6 +51,9 @@ class AgentService {
     final res = await callable.call<Map<String, dynamic>>({
       'message': message,
       if (conversationId != null) 'conversationId': conversationId,
+      if (productId != null) 'productId': productId,
+      'source': source,
+      if (suggestionLabel != null) 'suggestionLabel': suggestionLabel,
     });
     final data = res.data;
     return AgentReply(

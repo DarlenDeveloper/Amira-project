@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'cart_line.dart';
 import 'product.dart';
+import '../utils/product_colors.dart';
 
 /// Order lifecycle — created by the app as [pending], advanced by the admin.
 enum OrderStatus {
@@ -29,6 +30,8 @@ class OrderItem {
   final String unit;
   final double value;
   final int qty;
+  final String? colorName;
+  final String? colorHex;
 
   const OrderItem({
     required this.productId,
@@ -37,26 +40,33 @@ class OrderItem {
     required this.unit,
     required this.value,
     required this.qty,
+    this.colorName,
+    this.colorHex,
   });
 
   double get lineTotal => value * qty;
 
   factory OrderItem.fromCartLine(CartLine l) => OrderItem(
-        productId: l.productId,
+        productId: baseProductId(l.productId),
         name: l.name,
         imageUrl: l.imageUrl,
         unit: l.unit,
         value: l.value,
         qty: l.qty,
+        colorName: l.colorName,
+        colorHex: l.colorHex,
       );
 
-  factory OrderItem.fromProduct(Product p, int qty) => OrderItem(
+  factory OrderItem.fromProduct(Product p, int qty, {ProductColor? color}) =>
+      OrderItem(
         productId: p.id,
         name: p.name,
         imageUrl: p.imageUrl,
         unit: p.unit,
         value: p.value,
         qty: qty,
+        colorName: color?.name,
+        colorHex: color?.hex,
       );
 
   factory OrderItem.fromMap(Map<String, dynamic> m) => OrderItem(
@@ -66,6 +76,8 @@ class OrderItem {
         unit: (m['unit'] as String?) ?? 'unit',
         value: (m['value'] as num?)?.toDouble() ?? 0,
         qty: (m['qty'] as num?)?.toInt() ?? 1,
+        colorName: m['colorName'] as String?,
+        colorHex: m['colorHex'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -75,6 +87,8 @@ class OrderItem {
         'unit': unit,
         'value': value,
         'qty': qty,
+        if (colorName != null) 'colorName': colorName,
+        if (colorHex != null) 'colorHex': colorHex,
       };
 }
 
