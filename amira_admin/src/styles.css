@@ -550,10 +550,9 @@ body { margin: 0; }
   right: 12px;
   display: flex;
   gap: 8px;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.2s ease;
 }
-.portfolio-card:hover .portfolio-actions { opacity: 1; }
 .round-btn {
   width: 32px;
   height: 32px;
