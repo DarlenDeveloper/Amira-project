@@ -1,28 +1,14 @@
 /* ── Amira Explore — web port of the Flutter screen ───────────────────────────
    Palette: bg #F2F2EE · charcoal #2A2A2A · grey #8B8B8B · gold #B5945A        */
 
+/* Faddish — brand display face for titles. Drop the font file(s) into
+   public/fonts (Faddish.woff2 and/or Faddish.ttf). Until then, titles fall
+   back to Playfair Display / serif. */
 @font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Bold.ttf') format('truetype');
-  font-weight: 700;
+  font-family: 'Faddish';
+  src: url('/fonts/Faddish.woff2') format('woff2'),
+       url('/fonts/Faddish.ttf') format('truetype');
+  font-weight: 400 700;
   font-display: swap;
 }
 
@@ -31,8 +17,10 @@
   --white: #ffffff;
   --dark: #2a2a2a;
   --grey: #8b8b8b;
-  --gold: #b5945a;
-  --font: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --gold: #C4A464;
+  --gold-dark: #ac9058;
+  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 'Faddish', 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
 * {
@@ -49,6 +37,16 @@
 .explore {
   background: var(--bg);
   min-height: 100vh;
+}
+
+/* Brand display face (Faddish) for the principal titles & headings. */
+.explore-title,
+.hero-headline,
+.section-heading,
+.info-name,
+.cart-heading,
+.auth-title {
+  font-family: var(--font-title);
 }
 
 .explore-inner {
@@ -324,7 +322,7 @@ body {
   transition: transform 0.2s ease, background 0.2s ease;
 }
 .hero-cta:hover {
-  background: #a3814a;
+  background: var(--gold-dark);
   transform: translateY(-1px);
 }
 

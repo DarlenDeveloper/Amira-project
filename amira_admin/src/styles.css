@@ -1,22 +1,14 @@
 /* ── Amira Admin — editorial dashboard ───────────────────────────────────────
    Charcoal sidebar · cream canvas · serif display · gold accents             */
 
+/* Faddish — brand display face for titles. Drop the font file(s) into
+   public/fonts (Faddish.woff2 and/or Faddish.ttf). Until then, titles fall
+   back to Playfair Display / serif. */
 @font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/Satoshi-Bold.ttf') format('truetype');
-  font-weight: 700;
+  font-family: 'Faddish';
+  src: url('/fonts/Faddish.woff2') format('woff2'),
+       url('/fonts/Faddish.ttf') format('truetype');
+  font-weight: 400 700;
   font-display: swap;
 }
 
@@ -26,12 +18,12 @@
   --sidebar-active: #262624;
   --ink: #2a2a2a;
   --muted: #8b8b8b;
-  --gold: #b5945a;
+  --gold: #C4A464;
   --white: #fff;
   --line: #efebe3;
   --line-soft: #f3efe7;
-  --sans: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Faddish', 'Playfair Display', Georgia, 'Times New Roman', serif;
   --mono: ui-monospace, 'SF Mono', 'Roboto Mono', Menlo, monospace;
 }
 
@@ -730,7 +722,7 @@ body { margin: 0; }
   min-height: 100vh;
   letter-spacing: 0.3em;
   font-weight: 700;
-  color: #b5945a;
+  color: var(--gold);
 }
 
 /* ── Tag pill (product badge) ─────────────────────────────────────────────── */
@@ -875,7 +867,7 @@ body { margin: 0; }
 }
 .form-field input:focus,
 .form-field select:focus,
-.form-field textarea:focus { border-color: #b5945a; }
+.form-field textarea:focus { border-color: var(--gold); }
 .form-field textarea { resize: vertical; }
 
 .form-image { display: flex; align-items: center; gap: 16px; }
@@ -911,7 +903,7 @@ body { margin: 0; }
   background: #ededE8;
   border: 1px solid #e4e4de;
 }
-.img-tile--primary { border: 2px solid #b5945a; }
+.img-tile--primary { border: 2px solid var(--gold); }
 .img-tile img { width: 100%; height: 100%; object-fit: cover; }
 .img-primary-badge {
   position: absolute;
@@ -968,7 +960,7 @@ body { margin: 0; }
   font-weight: 600;
   cursor: pointer;
 }
-.img-add:hover { border-color: #b5945a; color: #b5945a; }
+.img-add:hover { border-color: var(--gold); color: var(--gold); }
 
 /* ── Colour editor (product form) ─────────────────────────────────────────── */
 .form-hint {
@@ -1027,7 +1019,7 @@ body { margin: 0; }
   font-weight: 600;
   cursor: pointer;
 }
-.color-add:hover { border-color: #b5945a; color: #b5945a; }
+.color-add:hover { border-color: var(--gold); color: var(--gold); }
 
 /* ── AI Agent page ────────────────────────────────────────────────────────── */
 .agent-layout {
@@ -1061,7 +1053,7 @@ body { margin: 0; }
   width: 20px;
   height: 20px;
   margin-top: 2px;
-  accent-color: #b5945a;
+  accent-color: var(--gold);
   cursor: pointer;
 }
 .agent-toggle span {
@@ -1128,7 +1120,7 @@ body { margin: 0; }
 .agent-recent-link {
   font-size: 12px;
   font-weight: 600;
-  color: #b5945a;
+  color: var(--gold);
   text-decoration: none;
 }
 .agent-recent-link:hover { text-decoration: underline; }
