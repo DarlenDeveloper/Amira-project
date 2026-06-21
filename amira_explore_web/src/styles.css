@@ -259,9 +259,6 @@
   background-size: cover;
   background-position: center;
   user-select: none;
-  /* Soft blur on the imagery; slight scale hides the blurred edges. */
-  filter: blur(3px);
-  transform: scale(1.06);
 }
 
 .hero-scrim {
@@ -269,9 +266,9 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.25) 0%,
-    rgba(0, 0, 0, 0.1) 40%,
-    rgba(23, 23, 23, 0.85) 100%
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.18) 40%,
+    rgba(17, 12, 4, 0.88) 100%
   );
 }
 
