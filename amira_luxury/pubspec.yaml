@@ -46,6 +46,8 @@ dependencies:
   google_sign_in: ^7.2.0
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
+  video_player: ^2.9.2
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +78,7 @@ flutter:
     - assets/images/company specilialities/
     - assets/fonts/
     - assets/icon/
+    - assets/video/
 
   fonts:
     - family: Plus Jakarta Sans

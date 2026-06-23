@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'login_screen.dart';
 
 const _dark = Color(0xFF2A2A2A);
@@ -10,10 +11,12 @@ const _gold = Color(0xFFC4A464);
 // Each slide pairs a full-bleed interior with a pillar of the Amira experience.
 class _SlideData {
   final String image;
+  final String? video;
   final String headline;
   final String subtitle;
   const _SlideData({
     required this.image,
+    this.video,
     required this.headline,
     required this.subtitle,
   });
@@ -27,13 +30,14 @@ const List<_SlideData> _slides = [
         'Discover Amira\'s curated finishes, textures, and lighting crafted for timeless East African living.',
   ),
   _SlideData(
-    image: 'assets/images/inside-weather-Uxqlfigh6oE-unsplash.jpg',
+    image: 'assets/images/onboarding_2_visualise.png',
     headline: 'See It In\nYour Space',
     subtitle:
         'Upload a photo of your room and watch Amira\'s materials come to life with AI visualisation.',
   ),
   _SlideData(
     image: 'assets/images/makespace-design-vdfUjNhI1PA-unsplash.jpg',
+    video: 'assets/video/onboarding_3_design.mp4',
     headline: 'Design With\nIntention',
     subtitle:
         'Explore collections, request orders, and create with a personal design assistant by your side.',
@@ -184,17 +188,40 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   padding: const EdgeInsets.fromLTRB(24, 12, 20, 0),
                   child: Stack(
                     children: [
-                      const Align(
+                      Align(
                         alignment: Alignment.topCenter,
-                        child: Text(
-                          'AMIRA',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: _white,
-                            fontFamily: 'Plus Jakarta Sans',
-                            letterSpacing: 4,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                'assets/icon/app_icon_foreground.png',
+                                width: 30,
+                                height: 30,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Amira Interiors',
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                                color: _white,
+                                fontFamily: 'Plus Jakarta Sans',
+                                letterSpacing: 1,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x99000000),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Align(
@@ -314,21 +341,24 @@ class _SlideView extends StatelessWidget {
       children: [
         // Dark placeholder so the first paint is never an empty flash.
         const ColoredBox(color: Color(0xFF1B1B1B)),
-        Image.asset(
-          data.image,
-          fit: BoxFit.cover,
-          cacheWidth: 1080,
-          gaplessPlayback: true,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
-              child: child,
-            );
-          },
-        ),
+        if (data.video != null)
+          _VideoBackground(videoAsset: data.video!, poster: data.image)
+        else
+          Image.asset(
+            data.image,
+            fit: BoxFit.cover,
+            cacheWidth: 1080,
+            gaplessPlayback: true,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (wasSynchronouslyLoaded) return child;
+              return AnimatedOpacity(
+                opacity: frame == null ? 0 : 1,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+                child: child,
+              );
+            },
+          ),
         // Bottom scrim for headline legibility
         const DecoratedBox(
           decoration: BoxDecoration(
@@ -350,6 +380,76 @@ class _SlideView extends StatelessWidget {
               colors: [Color(0x66000000), Colors.transparent],
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Looping muted video background (with a still poster fallback) ───────────────
+class _VideoBackground extends StatefulWidget {
+  final String videoAsset;
+  final String poster;
+  const _VideoBackground({required this.videoAsset, required this.poster});
+
+  @override
+  State<_VideoBackground> createState() => _VideoBackgroundState();
+}
+
+class _VideoBackgroundState extends State<_VideoBackground> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final controller = VideoPlayerController.asset(widget.videoAsset);
+    _controller = controller;
+    controller
+        .initialize()
+        .then((_) {
+          if (!mounted) return;
+          controller.setLooping(true);
+          controller.setVolume(0);
+          controller.play();
+          setState(() => _ready = true);
+        })
+        .catchError((_) {
+          // Leave the poster image showing if the video can't load.
+        });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Poster keeps the slide looking right until the video is ready.
+        Image.asset(widget.poster, fit: BoxFit.cover, cacheWidth: 1080),
+        AnimatedOpacity(
+          opacity: _ready ? 1 : 0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+          child: (_ready && controller != null)
+              ? ClipRect(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: controller.value.size.width,
+                      height: controller.value.size.height,
+                      child: VideoPlayer(controller),
+                    ),
+                  ),
+                )
+              : const SizedBox.expand(),
         ),
       ],
     );

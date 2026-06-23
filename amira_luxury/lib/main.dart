@@ -151,6 +151,7 @@ class _MainNavigatorState extends State<MainNavigator> {
                 child: ListenableBuilder(
                   listenable: _shell,
                   builder: (context, _) => CustomBottomNav(
+                    key: kBottomNavKey,
                     currentIndex: _shell.currentIndex,
                     onTap: _shell.goToTab,
                   ),

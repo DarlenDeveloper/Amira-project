@@ -3,10 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/agent_service.dart';
 import '../services/product_service.dart';
+import '../widgets/coachmark.dart';
 import 'item_details_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -40,6 +42,11 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   String? _pendingProductId;
   int _appliedIntentToken = 0;
   AppShellController? _shell;
+
+  // Coachmark anchors + trigger state.
+  final GlobalKey _tipAgentInputKey = GlobalKey();
+  final GlobalKey _tipAgentSuggestKey = GlobalKey();
+  bool _coachTriggered = false;
   String _displayedText = '';
   int _currentTextIndex = 0;
   final List<String> _typewriterTexts = [
@@ -77,11 +84,51 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       _shell = shell;
       _shell!.addListener(_onShellChange);
       _applyShellIntent();
+      if (shell.currentIndex == 3) _maybeShowCoachmarks();
     }
   }
 
   void _onShellChange() {
-    if (_shell?.currentIndex == 3) _applyShellIntent();
+    if (_shell?.currentIndex == 3) {
+      _applyShellIntent();
+      _maybeShowCoachmarks();
+    }
+  }
+
+  // Shows the Agent tooltips once, the first time the tab is opened in its
+  // welcome state (not over an active or auto-started conversation).
+  Future<void> _maybeShowCoachmarks() async {
+    if (_coachTriggered) return;
+    _coachTriggered = true;
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    if (prefs.getBool('coach_agent_v1') ?? false) return;
+    if (!mounted || _messages.isNotEmpty) return;
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted || _messages.isNotEmpty) return;
+    Coachmarks.show(
+      context,
+      [
+        CoachStep(
+          targetKey: _tipAgentInputKey,
+          title: 'Ask Amira anything',
+          body:
+              'Ask about finishes, design ideas, pricing, or your order — Amira replies instantly.',
+          radius: 30,
+        ),
+        CoachStep(
+          targetKey: _tipAgentSuggestKey,
+          title: 'Quick starts',
+          body: 'New here? Tap a suggestion to begin the conversation.',
+          radius: 18,
+        ),
+      ],
+      onFinish: () => prefs.setBool('coach_agent_v1', true),
+    );
   }
 
   void _applyShellIntent() {
@@ -388,19 +435,25 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                           ],
                           if (_suggestions.isNotEmpty) ...[
                             const SizedBox(height: 28),
-                            ..._suggestions.take(6).map(
-                              (s) => Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _SuggestionChip(
-                                  text: s,
-                                  icon: Iconsax.message_text5,
-                                  onTap: () => _sendMessage(
-                                    overrideText: s,
-                                    source: 'suggestion',
-                                    suggestionLabel: s,
-                                  ),
-                                ),
-                              ),
+                            Column(
+                              key: _tipAgentSuggestKey,
+                              children: [
+                                ..._suggestions.take(6).map(
+                                      (s) => Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 10),
+                                        child: _SuggestionChip(
+                                          text: s,
+                                          icon: Iconsax.message_text5,
+                                          onTap: () => _sendMessage(
+                                            overrideText: s,
+                                            source: 'suggestion',
+                                            suggestionLabel: s,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                              ],
                             ),
                           ],
                         ],
@@ -419,7 +472,10 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                   20,
                   keyboardOpen ? 12 : 116, // 116 clears the floating nav
                 ),
-                child: _buildSearchBar(),
+                child: KeyedSubtree(
+                  key: _tipAgentInputKey,
+                  child: _buildSearchBar(),
+                ),
               ),
             ],
           ),

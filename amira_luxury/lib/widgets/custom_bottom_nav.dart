@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+/// Global key so the first-run coachmark tour can spotlight the whole nav.
+final GlobalKey kBottomNavKey = GlobalKey();
+
+/// Per-tab keys so the tour can spotlight each destination individually.
+final GlobalKey kNavHomeKey = GlobalKey();
+final GlobalKey kNavExploreKey = GlobalKey();
+final GlobalKey kNavStudioKey = GlobalKey();
+final GlobalKey kNavAgentKey = GlobalKey();
+
 class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -44,12 +53,14 @@ class CustomBottomNav extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _NavItem(
+                  key: kNavHomeKey,
                   icon: Iconsax.home_15,
                   label: 'Home',
                   isActive: currentIndex == 0,
                   onTap: () => onTap(0),
                 ),
                 _NavIconOnly(
+                  key: kNavExploreKey,
                   label: 'Explore',
                   isActive: currentIndex == 1,
                   onTap: () => onTap(1),
@@ -57,6 +68,7 @@ class CustomBottomNav extends StatelessWidget {
                   svgPath: 'assets/images/discover_icon.svg',
                 ),
                 _NavIconOnly(
+                  key: kNavStudioKey,
                   label: 'Visual Studio',
                   isActive: currentIndex == 2,
                   onTap: () => onTap(2),
@@ -69,6 +81,7 @@ class CustomBottomNav extends StatelessWidget {
 
           // AI Agent button
           GestureDetector(
+            key: kNavAgentKey,
             onTap: () => onTap(3),
             child: Container(
               width: 64,
@@ -113,6 +126,7 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NavItem({
+    super.key,
     required this.icon,
     required this.label,
     required this.isActive,
@@ -169,6 +183,7 @@ class _NavIconOnly extends StatelessWidget {
   final String? svgPath;
 
   const _NavIconOnly({
+    super.key,
     this.icon,
     required this.label,
     required this.isActive,

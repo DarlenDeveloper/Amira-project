@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/render_service.dart';
 import '../services/shop_service.dart';
 import '../widgets/product_image.dart';
+import '../widgets/coachmark.dart';
 import 'item_details_screen.dart';
 
 const _bg = Color(0xFFF2F2EE);
@@ -48,6 +50,12 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   bool _disposed = false;
   AppShellController? _shell;
 
+  // Coachmark anchors + trigger state.
+  final GlobalKey _tipUploadKey = GlobalKey();
+  final GlobalKey _tipDescKey = GlobalKey();
+  final GlobalKey _tipMaterialsKey = GlobalKey();
+  bool _coachTriggered = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,11 +79,56 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       _shell = shell;
       _shell!.addListener(_onShellChange);
       _applyShellIntent();
+      if (shell.currentIndex == 2) _maybeShowCoachmarks();
     }
   }
 
   void _onShellChange() {
-    if (_shell?.currentIndex == 2) _applyShellIntent();
+    if (_shell?.currentIndex == 2) {
+      _applyShellIntent();
+      _maybeShowCoachmarks();
+    }
+  }
+
+  // Shows the Visual Studio tooltips once, the first time the tab is opened.
+  Future<void> _maybeShowCoachmarks() async {
+    if (_coachTriggered) return;
+    _coachTriggered = true;
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    if (prefs.getBool('coach_studio_v1') ?? false) return;
+    if (!mounted || _disposed) return;
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted || _disposed) return;
+    Coachmarks.show(
+      context,
+      [
+        CoachStep(
+          targetKey: _tipUploadKey,
+          title: 'Start with your room',
+          body: 'Upload or take a photo of the space you want to redesign.',
+          radius: 30,
+        ),
+        CoachStep(
+          targetKey: _tipDescKey,
+          title: 'Describe the look',
+          body: 'Optionally tell the AI the style or mood you\'re going for.',
+          radius: 28,
+        ),
+        CoachStep(
+          targetKey: _tipMaterialsKey,
+          title: 'Choose materials',
+          body:
+              'Add the Amira finishes to place in your room, then generate your render.',
+          radius: 20,
+        ),
+      ],
+      onFinish: () => prefs.setBool('coach_studio_v1', true),
+    );
   }
 
   void _applyShellIntent() {
@@ -394,6 +447,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
               if (_picked == null) ...[
                 // Upload Drop Zone (tap to choose camera / gallery)
                 GestureDetector(
+                  key: _tipUploadKey,
                   onTap: _chooseSource,
                   child: Container(
                   height: 380,
@@ -698,6 +752,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
 
               // Description text area (pill-shaped)
               Container(
+                key: _tipDescKey,
                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
                 decoration: BoxDecoration(
                   color: _white,
@@ -750,6 +805,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
               ),
               const SizedBox(height: 14),
               SizedBox(
+                key: _tipMaterialsKey,
                 height: 96,
                 child: ListView(
                   scrollDirection: Axis.horizontal,

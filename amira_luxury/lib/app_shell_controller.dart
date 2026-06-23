@@ -22,6 +22,20 @@ class AppShellController extends ChangeNotifier {
 
   int get sessionToken => _sessionToken;
 
+  // Set when the user taps "Restart Tutorial" so the Home screen replays the
+  // tour once it becomes active again.
+  bool _replayTutorial = false;
+  void requestTutorialReplay() {
+    _replayTutorial = true;
+    goToTab(0);
+  }
+
+  bool consumeTutorialReplay() {
+    final v = _replayTutorial;
+    _replayTutorial = false;
+    return v;
+  }
+
   void goToTab(int index) {
     _currentIndex = index;
     onTabChange(index);

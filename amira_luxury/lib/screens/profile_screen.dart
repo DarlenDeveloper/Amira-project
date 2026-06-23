@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/app_user.dart';
 import '../services/auth_service.dart';
+import '../widgets/coachmark.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
@@ -34,8 +36,123 @@ const List<String> _deleteReasons = [
   'Other',
 ];
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // Coachmark anchors + trigger state.
+  final GlobalKey _tipUserKey = GlobalKey();
+  final GlobalKey _tipAccountKey = GlobalKey();
+  final GlobalKey _tipSecurityKey = GlobalKey();
+  final GlobalKey _tipLegalKey = GlobalKey();
+  final GlobalKey _tipSupportKey = GlobalKey();
+  final GlobalKey _tipLogoutKey = GlobalKey();
+  late final List<GlobalKey> _sectionKeys = [
+    _tipAccountKey,
+    _tipSecurityKey,
+    _tipLegalKey,
+    _tipSupportKey,
+  ];
+  bool _coachTriggered = false;
+
+  // All coachmark "seen" flags, cleared by Restart Tutorial.
+  static const List<String> _coachFlags = [
+    'coach_home_v3',
+    'coach_explore_v1',
+    'coach_studio_v1',
+    'coach_agent_v1',
+    'coach_profile_v1',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowCoachmarks());
+  }
+
+  // Shows the Profile tooltips once, the first time it's opened.
+  Future<void> _maybeShowCoachmarks() async {
+    if (_coachTriggered) return;
+    _coachTriggered = true;
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    if (prefs.getBool('coach_profile_v1') ?? false) return;
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    Coachmarks.show(
+      context,
+      [
+        CoachStep(
+          targetKey: _tipUserKey,
+          title: 'Your account',
+          body: 'Your Amira profile — name, photo and contact details.',
+          radius: 20,
+        ),
+        CoachStep(
+          targetKey: _tipAccountKey,
+          title: 'Account',
+          body:
+              'Manage your profile and view your orders, renders and appointments.',
+          radius: 20,
+        ),
+        CoachStep(
+          targetKey: _tipSecurityKey,
+          title: 'Security & alerts',
+          body: 'Change your password and manage your notifications.',
+          radius: 20,
+        ),
+        CoachStep(
+          targetKey: _tipLegalKey,
+          title: 'About & legal',
+          body: 'Read our terms and privacy policy, or delete your account.',
+          radius: 20,
+        ),
+        CoachStep(
+          targetKey: _tipSupportKey,
+          title: 'Support',
+          body: 'Get help, reach our team, or replay this tutorial anytime.',
+          radius: 20,
+        ),
+        CoachStep(
+          targetKey: _tipLogoutKey,
+          title: 'Log out',
+          body: 'Sign out of your Amira account here.',
+          radius: 20,
+        ),
+      ],
+      onFinish: () => prefs.setBool('coach_profile_v1', true),
+    );
+  }
+
+  // Clears all tour flags, returns to Home, and replays the tutorial there.
+  Future<void> _restartTutorial() async {
+    final shell = AppShellController.maybeOf(context);
+    final navigator = Navigator.of(context);
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    for (final flag in _coachFlags) {
+      await prefs.remove(flag);
+    }
+    if (!mounted) return;
+    // Back out to the app shell, switch to Home, and replay from the start.
+    navigator.popUntil((route) => route.isFirst);
+    if (shell != null) {
+      shell.requestTutorialReplay();
+    }
+  }
 
   // Menu divided into logical sections. Language removed; Subscription, Orders,
   // Terms & Conditions and Privacy Policy added.
@@ -60,6 +177,7 @@ class ProfileScreen extends StatelessWidget {
     _MenuSection('Support', [
       _MenuEntry(Iconsax.message_question5, 'Help Center'),
       _MenuEntry(Iconsax.call5, 'Contact Us'),
+      _MenuEntry(Iconsax.refresh5, 'Restart Tutorial'),
     ]),
   ];
 
@@ -109,10 +227,18 @@ class ProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
                 child: Column(
                   children: [
-                    _buildUserCard(),
+                    KeyedSubtree(key: _tipUserKey, child: _buildUserCard()),
                     const SizedBox(height: 24),
-                    ..._sections.map((s) => _buildSection(context, s)),
-                    _buildLogoutButton(context),
+                    ..._sections.asMap().entries.map(
+                          (e) => KeyedSubtree(
+                            key: _sectionKeys[e.key],
+                            child: _buildSection(context, e.value),
+                          ),
+                        ),
+                    KeyedSubtree(
+                      key: _tipLogoutKey,
+                      child: _buildLogoutButton(context),
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       'Developed by Togashi Technologies',
@@ -529,6 +655,8 @@ class ProfileScreen extends StatelessWidget {
                       final shell = AppShellController.maybeOf(context);
                       Navigator.of(context).popUntil((route) => route.isFirst);
                       shell?.openAgent(source: 'support');
+                    } else if (label == 'Restart Tutorial') {
+                      _restartTutorial();
                     }
                   },
                 ),

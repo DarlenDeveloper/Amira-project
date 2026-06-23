@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/app_user.dart';
 import '../models/portfolio.dart';
@@ -9,6 +10,8 @@ import '../services/auth_service.dart';
 import '../services/portfolio_service.dart';
 import '../widgets/product_image.dart';
 import '../widgets/shimmer.dart';
+import '../widgets/coachmark.dart';
+import '../widgets/custom_bottom_nav.dart';
 import '../services/notification_service.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
@@ -105,17 +108,19 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _borderAnimationController;
   final TextEditingController _agentSearchCtrl = TextEditingController();
 
+  // Coachmark anchors for the first-run Home tour.
+  final GlobalKey _tipNotifKey = GlobalKey();
+  final GlobalKey _tipProfileKey = GlobalKey();
+  final GlobalKey _tipSearchKey = GlobalKey();
+  final GlobalKey _tipSwiperKey = GlobalKey();
+  final GlobalKey _tipPortfolioKey = GlobalKey();
+  AppShellController? _shell;
+  bool _coachPending = false;
+
   @override
   void initState() {
     super.initState();
     _initAnimationController();
-  }
-
-  void _initAnimationController() {
-    _borderAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
   }
 
   @override
@@ -125,6 +130,120 @@ class _HomeScreenState extends State<HomeScreen>
       _precacheImages();
       _imagesCached = true;
     }
+    final shell = AppShellController.maybeOf(context);
+    if (shell != null && shell != _shell) {
+      _shell?.removeListener(_onShell);
+      _shell = shell;
+      _shell!.addListener(_onShell);
+      if (shell.currentIndex == 0) _maybeShowCoachmarks();
+    }
+  }
+
+  void _onShell() {
+    if (_shell?.currentIndex == 0) _maybeShowCoachmarks();
+  }
+
+  // Shows the Home tooltips once. Only runs while Home is the active tab and
+  // front-most route, so it never renders over a pushed screen.
+  Future<void> _maybeShowCoachmarks() async {
+    if (_coachPending) return;
+    if (_shell?.currentIndex != 0) return;
+    final replay = _shell?.consumeTutorialReplay() ?? false;
+    _coachPending = true;
+    try {
+      SharedPreferences prefs;
+      try {
+        prefs = await SharedPreferences.getInstance();
+      } catch (_) {
+        return;
+      }
+      if (!replay && (prefs.getBool('coach_home_v3') ?? false)) return;
+      if (!_isHomeFrontmost()) return;
+      // Let the layout and featured images settle before pointing at them.
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (!_isHomeFrontmost()) return;
+      Coachmarks.show(
+        context,
+        _homeSteps(),
+        onFinish: () => prefs.setBool('coach_home_v3', true),
+      );
+    } finally {
+      _coachPending = false;
+    }
+  }
+
+  // True only when Home is mounted, the active tab, and no route sits on top.
+  bool _isHomeFrontmost() {
+    if (!mounted || _shell?.currentIndex != 0) return false;
+    final route = ModalRoute.of(context);
+    return route != null && route.isCurrent;
+  }
+
+  List<CoachStep> _homeSteps() => [
+        CoachStep(
+          targetKey: _tipNotifKey,
+          title: 'Notifications',
+          body:
+              'Order updates, appointment reminders and Amira news arrive here.',
+          radius: 24,
+        ),
+        CoachStep(
+          targetKey: _tipProfileKey,
+          title: 'Your profile',
+          body:
+              'Manage your details, view orders and appointments, and sign out.',
+          radius: 26,
+        ),
+        CoachStep(
+          targetKey: _tipSearchKey,
+          title: 'Ask Amira',
+          body:
+              'Ask our AI design assistant anything — or tap the gallery icon to visualise materials in your own space.',
+          radius: 30,
+        ),
+        CoachStep(
+          targetKey: _tipSwiperKey,
+          title: 'Signature finishes',
+          body: 'Swipe through Amira\'s hallmark materials and textures.',
+          radius: 26,
+        ),
+        CoachStep(
+          targetKey: _tipPortfolioKey,
+          title: 'Our portfolio',
+          body: 'Browse real Amira projects and the finishes behind them.',
+          radius: 22,
+        ),
+        CoachStep(
+          targetKey: kNavHomeKey,
+          title: 'Home',
+          body: 'Your starting point — featured finishes, search, and projects.',
+          radius: 26,
+        ),
+        CoachStep(
+          targetKey: kNavExploreKey,
+          title: 'Explore',
+          body: 'Browse the full materials catalogue and build your cart.',
+          radius: 26,
+        ),
+        CoachStep(
+          targetKey: kNavStudioKey,
+          title: 'Visual Studio',
+          body: 'See Amira materials placed in your own room with AI.',
+          radius: 26,
+        ),
+        CoachStep(
+          targetKey: kNavAgentKey,
+          title: 'Amira Agent',
+          body: 'Chat with your personal AI design assistant anytime.',
+          radius: 32,
+        ),
+      ];
+
+  void _initAnimationController() {
+    _borderAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
   }
 
   void _precacheImages() {
@@ -140,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _shell?.removeListener(_onShell);
     _agentSearchCtrl.dispose();
     _swiperController.dispose();
     _borderAnimationController.dispose();
@@ -167,12 +287,16 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 20),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildSearchBar(),
+                  child: KeyedSubtree(
+                    key: _tipSearchKey,
+                    child: _buildSearchBar(),
+                  ),
                 ),
                 const SizedBox(height: 32),
 
                 // Card swiper — 45% of screen height (static featured cards)
                 SizedBox(
+                  key: _tipSwiperKey,
                   height: screenHeight * 0.45,
                   child: CardSwiper(
                     controller: _swiperController,
@@ -219,7 +343,10 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 14),
 
-                _buildPortfolioStrip(),
+                KeyedSubtree(
+                  key: _tipPortfolioKey,
+                  child: _buildPortfolioStrip(),
+                ),
                 const SizedBox(height: 100),
               ],
             ),
@@ -320,6 +447,7 @@ class _HomeScreenState extends State<HomeScreen>
         Row(
           children: [
             Stack(
+              key: _tipNotifKey,
               clipBehavior: Clip.none,
               children: [
                 GestureDetector(
@@ -370,6 +498,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(width: 12),
             GestureDetector(
+              key: _tipProfileKey,
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),

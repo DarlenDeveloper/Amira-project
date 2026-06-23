@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/shop_service.dart';
 import '../widgets/product_image.dart';
 import '../widgets/shimmer.dart';
+import '../widgets/coachmark.dart';
 import 'cart_screen.dart';
 import 'item_details_screen.dart';
 
@@ -25,6 +27,76 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   int _selectedFilter = 0;
   final List<String> _filters = ['ALL', 'FLUTED PANELS', 'WPC PANELS'];
+
+  // Coachmark anchors + trigger state.
+  final GlobalKey _tipCartKey = GlobalKey();
+  final GlobalKey _tipFilterKey = GlobalKey();
+  final GlobalKey _tipGridKey = GlobalKey();
+  AppShellController? _shell;
+  bool _coachTriggered = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final shell = AppShellController.maybeOf(context);
+    if (shell != null && shell != _shell) {
+      _shell?.removeListener(_onShell);
+      _shell = shell;
+      _shell!.addListener(_onShell);
+      if (shell.currentIndex == 1) _maybeShowCoachmarks();
+    }
+  }
+
+  void _onShell() {
+    if (_shell?.currentIndex == 1) _maybeShowCoachmarks();
+  }
+
+  @override
+  void dispose() {
+    _shell?.removeListener(_onShell);
+    super.dispose();
+  }
+
+  // Shows the Explore tooltips once, the first time the tab is opened.
+  Future<void> _maybeShowCoachmarks() async {
+    if (_coachTriggered) return;
+    _coachTriggered = true;
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+    if (prefs.getBool('coach_explore_v1') ?? false) return;
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    Coachmarks.show(
+      context,
+      [
+        CoachStep(
+          targetKey: _tipCartKey,
+          title: 'Your cart',
+          body: 'Items you add are collected here — review them and check out.',
+          radius: 24,
+        ),
+        CoachStep(
+          targetKey: _tipFilterKey,
+          title: 'Filter materials',
+          body: 'Narrow the catalogue by material type.',
+          radius: 24,
+        ),
+        CoachStep(
+          targetKey: _tipGridKey,
+          title: 'Browse & act',
+          body:
+              'Tap a material for full details — or long-press for quick options: visualise it with AI, or ask Amira about it.',
+          radius: 22,
+        ),
+      ],
+      onFinish: () => prefs.setBool('coach_explore_v1', true),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +122,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ),
                 GestureDetector(
+                  key: _tipCartKey,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const CartScreen()),
@@ -67,6 +140,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
           // Fixed filter pills
           SizedBox(
+            key: _tipFilterKey,
             height: 44,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
@@ -133,10 +207,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         childAspectRatio: 0.66,
                       ),
                       itemCount: products.length,
-                      itemBuilder: (_, i) => _MaterialCard(
-                        product: products[i],
-                        isFavourite: favourites.contains(products[i].id),
-                      ),
+                      itemBuilder: (_, i) {
+                        final card = _MaterialCard(
+                          product: products[i],
+                          isFavourite: favourites.contains(products[i].id),
+                        );
+                        // Anchor the first card for the coachmark tour.
+                        return i == 0
+                            ? KeyedSubtree(key: _tipGridKey, child: card)
+                            : card;
+                      },
                     );
                   },
                 );
