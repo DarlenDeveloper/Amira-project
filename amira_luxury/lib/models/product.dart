@@ -33,6 +33,10 @@ class Product {
   final String category;
   final double value;
   final String unit;
+  final double? dimLength;
+  final double? dimWidth;
+  final String dimUnit;
+  final double? areaPerUnitSqm;
   final String about;
   final String desc;
   final String? badge;
@@ -50,6 +54,10 @@ class Product {
     required this.category,
     required this.value,
     required this.unit,
+    this.dimLength,
+    this.dimWidth,
+    this.dimUnit = 'm',
+    this.areaPerUnitSqm,
     required this.about,
     required this.desc,
     required this.badge,
@@ -61,6 +69,21 @@ class Product {
 
   /// Display price, e.g. "From UGX 56 / sqm".
   String get priceLabel => 'From ${formatUgx(value)} / $unit';
+
+  /// Whether per-piece dimensions were set by the admin.
+  bool get hasDimensions =>
+      dimLength != null && dimWidth != null && dimLength! > 0 && dimWidth! > 0;
+
+  /// Human-readable dimensions, e.g. "2.9 × 0.3 m". Empty when not set.
+  String get dimensionsLabel {
+    if (!hasDimensions) return '';
+    final l = _trimNum(dimLength!);
+    final w = _trimNum(dimWidth!);
+    return '$l × $w $dimUnit';
+  }
+
+  static String _trimNum(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
   bool get isOutOfStock => status == ProductStatus.out || stock <= 0;
   bool get isLowStock => status == ProductStatus.low;
@@ -77,6 +100,10 @@ class Product {
       category: (data['category'] as String?) ?? '',
       value: (data['value'] as num?)?.toDouble() ?? 0,
       unit: (data['unit'] as String?) ?? 'unit',
+      dimLength: (data['dimLength'] as num?)?.toDouble(),
+      dimWidth: (data['dimWidth'] as num?)?.toDouble(),
+      dimUnit: (data['dimUnit'] as String?) ?? 'm',
+      areaPerUnitSqm: (data['areaPerUnitSqm'] as num?)?.toDouble(),
       about: (data['about'] as String?) ?? '',
       desc: (data['desc'] as String?) ?? '',
       badge: data['badge'] as String?,
@@ -96,6 +123,10 @@ class Product {
       'category': category,
       'value': value,
       'unit': unit,
+      if (dimLength != null) 'dimLength': dimLength,
+      if (dimWidth != null) 'dimWidth': dimWidth,
+      'dimUnit': dimUnit,
+      if (areaPerUnitSqm != null) 'areaPerUnitSqm': areaPerUnitSqm,
       'about': about,
       'desc': desc,
       'badge': badge,

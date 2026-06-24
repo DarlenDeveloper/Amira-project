@@ -9,6 +9,22 @@ import {
 } from '../db.js';
 
 const UNITS = ['sqm', 'unit', 'm', 'sheet'];
+const DIM_UNITS = [
+  { value: 'm', label: 'Metres (m)' },
+  { value: 'ft', label: 'Feet (ft)' },
+];
+const FT_TO_M = 0.3048;
+
+// Normalised per-piece coverage in m² (so the app/estimates have one unit to
+// work with regardless of whether the admin entered metres or feet).
+function computeAreaSqm(length, width, dimUnit) {
+  const l = Number(length);
+  const w = Number(width);
+  if (!l || !w || Number.isNaN(l) || Number.isNaN(w)) return null;
+  const f = dimUnit === 'ft' ? FT_TO_M : 1;
+  return +(l * f * w * f).toFixed(4);
+}
+
 const STATUSES = [
   { value: 'active', label: 'In stock' },
   { value: 'low', label: 'Low stock' },
@@ -52,6 +68,9 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
     category: initial?.category ?? '',
     value: initial?.value ?? '',
     unit: initial?.unit ?? 'sqm',
+    length: initial?.dimLength ?? '',
+    width: initial?.dimWidth ?? '',
+    dimUnit: initial?.dimUnit ?? 'm',
     stock: initial?.stock ?? 0,
     status: initial?.status ?? 'active',
     badge: initial?.badge ?? '',
@@ -104,6 +123,15 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
 
   const removeColor = (key) => setColors((prev) => prev.filter((c) => c.key !== key));
 
+  // Live per-piece coverage preview shown under the dimensions inputs.
+  const _areaSqm = computeAreaSqm(form.length, form.width, form.dimUnit);
+  const areaHint = _areaSqm
+    ? `Coverage per piece: ${_areaSqm} m²` +
+      (form.dimUnit === 'ft'
+        ? ` (${(Number(form.length) * Number(form.width)).toFixed(2)} ft²)`
+        : '')
+    : 'Optional — used for area & cost estimates. Leave blank for per-unit items (lights, blinds).';
+
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return setError('Name is required.');
@@ -135,6 +163,10 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
         category: form.category.trim(),
         value: Number(form.value),
         unit: form.unit,
+        dimLength: form.length === '' ? null : Number(form.length),
+        dimWidth: form.width === '' ? null : Number(form.width),
+        dimUnit: form.dimUnit,
+        areaPerUnitSqm: computeAreaSqm(form.length, form.width, form.dimUnit),
         stock: Number(form.stock) || 0,
         status: form.status,
         badge: form.badge.trim() || null,
@@ -270,6 +302,44 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
             <span>Stock</span>
             <input type="number" min="0" value={form.stock} onChange={set('stock')} />
           </label>
+        </div>
+
+        {/* Per-piece dimensions — feeds area & cost estimates in the app. */}
+        <div className="form-field">
+          <span>Dimensions per piece</span>
+          <div className="form-row">
+            <label className="form-field">
+              <span>Length</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.length}
+                onChange={set('length')}
+                placeholder="e.g. 2.9"
+              />
+            </label>
+            <label className="form-field">
+              <span>Width</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.width}
+                onChange={set('width')}
+                placeholder="e.g. 0.3"
+              />
+            </label>
+            <label className="form-field">
+              <span>Measured in</span>
+              <select value={form.dimUnit} onChange={set('dimUnit')}>
+                {DIM_UNITS.map((u) => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="form-hint">{areaHint}</p>
         </div>
 
         <label className="form-field">

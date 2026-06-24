@@ -197,6 +197,32 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                     ),
                   ),
 
+                  // Per-piece dimensions / coverage (when the admin set them)
+                  if (product.hasDimensions)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.straighten_rounded,
+                              size: 16, color: _grey),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              product.areaPerUnitSqm != null
+                                  ? '${product.dimensionsLabel} · ${product.areaPerUnitSqm} m²/piece'
+                                  : product.dimensionsLabel,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                                color: _grey,
+                                fontFamily: 'Plus Jakarta Sans',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Description
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),

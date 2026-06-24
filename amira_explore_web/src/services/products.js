@@ -34,6 +34,12 @@ export function mapProduct(id, data = {}) {
   const specs = [];
   if (data.category) specs.push({ label: 'Category', value: data.category });
   specs.push({ label: 'Sold by', value: unitLabel(unit) });
+  const dims = dimensionsLabel(data);
+  if (dims) specs.push({ label: 'Dimensions', value: dims });
+  const areaPerUnitSqm = Number(data.areaPerUnitSqm) || null;
+  if (areaPerUnitSqm) {
+    specs.push({ label: 'Coverage', value: `${areaPerUnitSqm} m² / piece` });
+  }
   if (STATUS_LABEL[status]) {
     specs.push({ label: 'Availability', value: STATUS_LABEL[status] });
   }
@@ -49,6 +55,10 @@ export function mapProduct(id, data = {}) {
     value,
     unit,
     price: priceLabel(value, unit),
+    dimLength: Number(data.dimLength) || null,
+    dimWidth: Number(data.dimWidth) || null,
+    dimUnit: data.dimUnit || 'm',
+    areaPerUnitSqm,
     badge: data.badge || null,
     about: data.about || data.desc || '',
     desc: data.desc || '',
@@ -67,6 +77,16 @@ function unitLabel(unit) {
     case 'sheet': return 'Sheet';
     default: return 'Unit';
   }
+}
+
+// Per-piece dimensions label, e.g. "2.9 × 0.3 m". Empty when not set.
+function dimensionsLabel(data) {
+  const l = Number(data.dimLength);
+  const w = Number(data.dimWidth);
+  if (!l || !w || Number.isNaN(l) || Number.isNaN(w)) return '';
+  const unit = data.dimUnit || 'm';
+  const trim = (n) => (Number.isInteger(n) ? String(n) : String(n));
+  return `${trim(l)} × ${trim(w)} ${unit}`;
 }
 
 /**
