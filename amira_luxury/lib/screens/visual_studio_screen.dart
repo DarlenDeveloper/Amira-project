@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,6 +39,8 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   String? _uploadedUrl;
   bool _generating = false;
   String? _resultUrl;
+  bool _enhancing = false;
+  bool _saving = false;
 
   // Live catalogue from Firestore + the user's current selection.
   final List<Product> _catalog = [];
@@ -140,8 +143,11 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     setState(() {
       _appliedIntentToken = intent.token;
       _source = intent.source;
-      for (final p in intent.products) {
-        if (!_selected.any((s) => s.id == p.id)) _selected.add(p);
+      // Single-material selection: the incoming product replaces any current one.
+      if (intent.products.isNotEmpty) {
+        _selected
+          ..clear()
+          ..add(intent.products.first);
       }
     });
   }
@@ -184,6 +190,8 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
         _uploadedUrl = null;
         _progress = 0;
       });
+      // Auto-upload as soon as a photo is chosen — no manual Upload step.
+      _upload();
     } catch (_) {
       _snack('Couldn\'t open that image. Please try again.');
     }
@@ -286,13 +294,23 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     });
   }
 
-  Future<void> _generate() async {
+  Future<void> _generate({bool forceRetry = false}) async {
     final renderId = _renderId;
     if (renderId == null || _generating) return;
+    if (_selected.isEmpty) {
+      _snack('Add at least one material to visualise.');
+      return;
+    }
     final token = _shell?.sessionToken ?? 0;
     setState(() => _generating = true);
     try {
-      final url = await RenderService.instance.generateRender(renderId: renderId);
+      final url = await RenderService.instance.generateRender(
+        renderId: renderId,
+        forceRetry: forceRetry,
+        productIds: _selected.map((p) => p.id).toList(),
+        materialNames: _selected.map((p) => p.name).toList(),
+        prompt: _descCtrl.text.trim(),
+      );
       if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
       setState(() {
         _resultUrl = url;
@@ -302,6 +320,59 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       if (!mounted || _disposed) return;
       setState(() => _generating = false);
       _snack('Couldn\'t generate the render. Please try again.');
+    }
+  }
+
+  Future<void> _enhancePrompt() async {
+    if (_enhancing) return;
+    final raw = _descCtrl.text.trim();
+    if (raw.isEmpty && _selected.isEmpty) {
+      _snack('Add a short description or pick a material first.');
+      return;
+    }
+    setState(() => _enhancing = true);
+    try {
+      final enhanced = await RenderService.instance.enhancePrompt(
+        prompt: raw,
+        materialNames: _selected.map((p) => p.name).toList(),
+      );
+      if (!mounted || _disposed) return;
+      setState(() {
+        _descCtrl.text = enhanced;
+        _enhancing = false;
+      });
+    } catch (_) {
+      if (!mounted || _disposed) return;
+      setState(() => _enhancing = false);
+      _snack('Couldn\'t enhance the prompt. Please try again.');
+    }
+  }
+
+  Future<void> _saveResult() async {
+    final url = _resultUrl;
+    if (url == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final hasAccess = await Gal.requestAccess(toAlbum: true);
+      if (!hasAccess) {
+        if (!mounted || _disposed) return;
+        setState(() => _saving = false);
+        _snack('Allow photo access to save the render.');
+        return;
+      }
+      final bytes = await RenderService.instance.fetchRenderBytes(url);
+      await Gal.putImageBytes(
+        bytes,
+        album: 'Amira',
+        name: 'amira_render_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (!mounted || _disposed) return;
+      setState(() => _saving = false);
+      _snack('Saved to your gallery');
+    } catch (_) {
+      if (!mounted || _disposed) return;
+      setState(() => _saving = false);
+      _snack('Couldn\'t save the render. Please try again.');
     }
   }
 
@@ -344,7 +415,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Add materials',
+                'Choose a material',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -387,7 +458,10 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                       final m = available[i];
                       return GestureDetector(
                         onTap: () {
-                          setState(() => _selected.add(m));
+                          // Single-material selection: replace any current pick.
+                          setState(() => _selected
+                            ..clear()
+                            ..add(m));
                           Navigator.of(ctx).pop();
                         },
                         behavior: HitTestBehavior.opaque,
@@ -600,41 +674,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
               if (_generating || _resultUrl != null) ...[
                 const SizedBox(height: 20),
                 if (_generating)
-                  Container(
-                    height: 300,
-                    decoration: BoxDecoration(
-                      color: _white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _lightGrey, width: 1.5),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: _gold, strokeWidth: 2),
-                          SizedBox(height: 18),
-                          Text(
-                            'Visualising your room…',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: _dark,
-                              fontFamily: 'Plus Jakarta Sans',
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'This can take up to a minute.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: _grey,
-                              fontFamily: 'Plus Jakarta Sans',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
+                  const _ShimmerLoading(height: 320)
                 else
                   ClipRRect(
                     borderRadius: BorderRadius.circular(24),
@@ -642,19 +682,59 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                       _resultUrl!,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      frameBuilder: (context, child, frame, wasSync) {
+                        if (wasSync) return child;
+                        return AnimatedOpacity(
+                          opacity: frame == null ? 0 : 1,
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeOut,
+                          child: child,
+                        );
+                      },
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
-                        return Container(
-                          height: 300,
-                          color: _white,
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                                color: _gold, strokeWidth: 2),
-                          ),
-                        );
+                        return const _ShimmerLoading(height: 300);
                       },
                     ),
                   ),
+                if (_resultUrl != null && !_generating) ...[
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: _saving ? null : _saveResult,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _white,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: _lightGrey, width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: _saving
+                                ? const CircularProgressIndicator(
+                                    color: _gold, strokeWidth: 2)
+                                : const Icon(Icons.download_rounded,
+                                    size: 18, color: _gold),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _saving ? 'Saving…' : 'Save to device',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _dark,
+                              fontFamily: 'Plus Jakarta Sans',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
 
               // Result actions
@@ -781,11 +861,51 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                 ),
               ),
 
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: _enhancing ? null : _enhancePrompt,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: _lightGold,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: _enhancing
+                              ? const CircularProgressIndicator(
+                                  color: _gold, strokeWidth: 2)
+                              : const Icon(Icons.auto_awesome,
+                                  size: 16, color: _gold),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _enhancing ? 'Enhancing…' : 'Enhance with AI',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _dark,
+                            fontFamily: 'Plus Jakarta Sans',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 24),
 
-              // Materials to visualise
+              // Material to visualise
               const Text(
-                'Materials to visualise',
+                'Material to visualise',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -795,7 +915,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Add the materials you want the AI to place in your room.',
+                'Add the material you want the AI to place in your room.',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w400,
@@ -869,7 +989,9 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                     child: GestureDetector(
                       onTap: (_uploading || _generating)
                           ? null
-                          : (_uploadedUrl == null ? _upload : _generate),
+                          : (_uploadedUrl == null
+                              ? _upload
+                              : () => _generate(forceRetry: _resultUrl != null)),
                       child: Opacity(
                         opacity: (_uploading || _generating) ? 0.7 : 1,
                         child: Container(
@@ -1000,5 +1122,101 @@ class _MaterialThumb extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// ChatGPT-style generating placeholder: a warm shimmer sweep with a caption,
+/// shown while the AI render is being produced (and while it loads in).
+class _ShimmerLoading extends StatefulWidget {
+  final double height;
+  const _ShimmerLoading({this.height = 300});
+
+  @override
+  State<_ShimmerLoading> createState() => _ShimmerLoadingState();
+}
+
+class _ShimmerLoadingState extends State<_ShimmerLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: const [
+                        Color(0xFFEDE4D2),
+                        Color(0xFFFBF7EF),
+                        Color(0xFFEDE4D2),
+                      ],
+                      stops: const [0.1, 0.3, 0.4],
+                      transform:
+                          _SlidingGradientTransform(_controller.value * 2 - 1),
+                    ),
+                  ),
+                );
+              },
+            ),
+            Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _white.withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Text(
+                  'Visualising your room…',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _dark,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SlidingGradientTransform extends GradientTransform {
+  final double slidePercent;
+  const _SlidingGradientTransform(this.slidePercent);
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * slidePercent, 0, 0);
   }
 }

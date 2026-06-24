@@ -6,6 +6,8 @@
 		<string>Amira uses your camera to capture a photo of your room for the Visual Studio.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Amira needs access to your photos to use a room image in the Visual Studio.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Amira saves your generated renders to your photo library.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>

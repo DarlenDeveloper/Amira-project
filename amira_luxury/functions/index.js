@@ -23,6 +23,44 @@ const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const RENDER_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const RENDER_RATE_LIMIT = 3; // renders allowed per user…
+const RENDER_RATE_WINDOW_MS = 60 * 60 * 1000; // …per rolling hour
+
+// Rolling-window rate limit stored as a timestamp list under
+// renderRateLimits/{uid}. Avoids a composite index on the renders collection.
+async function getRecentRenderCount(db, uid) {
+  const snap = await db.collection('renderRateLimits').doc(uid).get();
+  if (!snap.exists) return 0;
+  const hits = Array.isArray(snap.data().hits) ? snap.data().hits : [];
+  const windowStart = Date.now() - RENDER_RATE_WINDOW_MS;
+  return hits.filter((t) => typeof t === 'number' && t > windowStart).length;
+}
+
+async function recordRenderHit(db, uid) {
+  const ref = db.collection('renderRateLimits').doc(uid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const hits =
+      snap.exists && Array.isArray(snap.data().hits) ? snap.data().hits : [];
+    const windowStart = Date.now() - RENDER_RATE_WINDOW_MS;
+    const recent = hits.filter((t) => typeof t === 'number' && t > windowStart);
+    recent.push(Date.now());
+    tx.set(
+      ref,
+      { hits: recent, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  });
+}
+
+function assertUnderRenderLimit(count) {
+  if (count >= RENDER_RATE_LIMIT) {
+    throw new HttpsError(
+      'resource-exhausted',
+      `You've reached the limit of ${RENDER_RATE_LIMIT} renders per hour. Please try again later.`,
+    );
+  }
+}
 
 async function fetchInlineImage(url) {
   const res = await fetch(url);
@@ -206,7 +244,7 @@ export const generateRender = onCall(
       throw new HttpsError('permission-denied', 'Not your render session.');
     }
 
-    if (data.status === 'completed' && data.resultUrl) {
+    if (data.status === 'completed' && data.resultUrl && !forceRetry) {
       return { resultUrl: data.resultUrl, renderId };
     }
     if (data.status === 'generating') {
@@ -227,7 +265,11 @@ export const generateRender = onCall(
         'This session failed. Pass forceRetry to try again.',
       );
     }
-    if (data.status !== 'ready' && !(data.status === 'failed' && forceRetry)) {
+    if (
+      data.status !== 'ready' &&
+      !(data.status === 'failed' && forceRetry) &&
+      !(data.status === 'completed' && forceRetry)
+    ) {
       throw new HttpsError(
         'failed-precondition',
         `Cannot generate while status is "${data.status}".`,
@@ -239,9 +281,33 @@ export const generateRender = onCall(
       throw new HttpsError('failed-precondition', 'No room image on this session.');
     }
 
-    const productIds = data.productIds || [];
-    const materialNames = data.materialNames || [];
-    const prompt = data.prompt || '';
+    // Rate limit: at most RENDER_RATE_LIMIT renders per rolling hour per user.
+    assertUnderRenderLimit(await getRecentRenderCount(db, uid));
+
+    // Latest selection from the client wins (materials/prompt are decoupled
+    // from session creation, so a user can pick the photo first then choose
+    // finishes). Fall back to whatever was stored on the session.
+    const reqProductIds = Array.isArray(request.data?.productIds)
+      ? request.data.productIds.filter((x) => typeof x === 'string').slice(0, 5)
+      : null;
+    const reqMaterialNames = Array.isArray(request.data?.materialNames)
+      ? request.data.materialNames.filter((x) => typeof x === 'string').slice(0, 5)
+      : null;
+    const reqPrompt =
+      typeof request.data?.prompt === 'string' ? request.data.prompt : null;
+
+    const productIds = reqProductIds ?? (data.productIds || []);
+    const materialNames = reqMaterialNames ?? (data.materialNames || []);
+    const prompt = reqPrompt ?? (data.prompt || '');
+
+    // Persist the latest selection so the saved render reflects what was used.
+    if (reqProductIds || reqMaterialNames || reqPrompt !== null) {
+      await setRenderDoc(db, renderId, {
+        ...(reqProductIds ? { productIds } : {}),
+        ...(reqMaterialNames ? { materialNames } : {}),
+        ...(reqPrompt !== null ? { prompt } : {}),
+      });
+    }
 
     // Atomically claim the session.
     try {
@@ -249,11 +315,15 @@ export const generateRender = onCall(
         const fresh = await tx.get(ref);
         if (!fresh.exists) throw new HttpsError('not-found', 'Render session not found.');
         const s = fresh.data().status;
-        if (s === 'completed') return;
+        if (s === 'completed' && !forceRetry) return;
         if (s === 'generating') {
           throw new HttpsError('failed-precondition', 'Render already in progress.');
         }
-        if (s !== 'ready' && !(s === 'failed' && forceRetry)) {
+        if (
+          s !== 'ready' &&
+          !(s === 'failed' && forceRetry) &&
+          !(s === 'completed' && forceRetry)
+        ) {
           throw new HttpsError('failed-precondition', `Invalid status "${s}".`);
         }
         tx.set(
@@ -269,7 +339,7 @@ export const generateRender = onCall(
 
     // Re-check after transaction (another caller may have completed).
     const afterClaim = (await ref.get()).data();
-    if (afterClaim.status === 'completed' && afterClaim.resultUrl) {
+    if (afterClaim.status === 'completed' && afterClaim.resultUrl && !forceRetry) {
       return { resultUrl: afterClaim.resultUrl, renderId };
     }
 
@@ -304,19 +374,20 @@ export const generateRender = onCall(
 
       const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
       const instruction =
-        'You are an interior design visualiser for Amira Interiors, a luxury ' +
-        'East African interiors brand. Edit the FIRST image — the user\'s room ' +
-        '— to apply the materials/finishes' + names + ' shown in the following ' +
-        'reference images. Preserve the room\'s architecture, perspective, ' +
-        'furniture and lighting; only change the relevant surfaces so the ' +
-        'result looks photorealistic and refined.' +
-        (prompt ? ' User preferences: ' + prompt : '');
+        'Edit the FIRST image (the user\'s room) by applying only the ' +
+        'material' + names + ' from the reference image(s) onto the matching ' +
+        'surface. Use the references for texture and colour only. Keep the ' +
+        'room otherwise identical: do not add, remove or move any furniture, ' +
+        'decor or objects, and keep the layout, perspective and lighting ' +
+        'unchanged.' +
+        (prompt ? ' Optional: ' + prompt : '');
 
       const parts = [{ text: instruction }, room, ...products];
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
         model: IMAGE_MODEL,
         contents: [{ role: 'user', parts }],
+        config: { temperature: 0.15 },
       });
 
       const cand = response?.candidates?.[0];
@@ -354,6 +425,7 @@ export const generateRender = onCall(
       });
 
       console.log('generateRender:done', resultStoragePath);
+      await recordRenderHit(db, uid);
       return { resultUrl, renderId };
     } catch (e) {
       console.error('generateRender:failed', e?.message, e?.stack);
@@ -376,6 +448,7 @@ async function runLegacyGenerateRender(uid, {
   prompt = '',
 }) {
   const db = getFirestore();
+  assertUnderRenderLimit(await getRecentRenderCount(db, uid));
   try {
     const room = await fetchInlineImage(roomImageUrl);
     const products = [];
@@ -388,18 +461,19 @@ async function runLegacyGenerateRender(uid, {
     }
     const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
     const instruction =
-      'You are an interior design visualiser for Amira Interiors, a luxury ' +
-      'East African interiors brand. Edit the FIRST image — the user\'s room ' +
-      '— to apply the materials/finishes' + names + ' shown in the following ' +
-      'reference images. Preserve the room\'s architecture, perspective, ' +
-      'furniture and lighting; only change the relevant surfaces so the ' +
-      'result looks photorealistic and refined.' +
-      (prompt ? ' User preferences: ' + prompt : '');
+      'Edit the FIRST image (the user\'s room) by applying only the ' +
+      'material' + names + ' from the reference image(s) onto the matching ' +
+      'surface. Use the references for texture and colour only. Keep the ' +
+      'room otherwise identical: do not add, remove or move any furniture, ' +
+      'decor or objects, and keep the layout, perspective and lighting ' +
+      'unchanged.' +
+      (prompt ? ' Optional: ' + prompt : '');
     const parts = [{ text: instruction }, room, ...products];
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts }],
+      config: { temperature: 0.15 },
     });
     const imgPart = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
     if (!imgPart) {
@@ -430,6 +504,7 @@ async function runLegacyGenerateRender(uid, {
         resultUrl,
         createdAt: FieldValue.serverTimestamp(),
       });
+    await recordRenderHit(db, uid);
     return { resultUrl };
   } catch (e) {
     console.error('generateRender:legacy failed', e?.message);
@@ -464,6 +539,91 @@ export const cleanupStaleRenders = onSchedule(
         });
       }
       console.log('cleanupStaleRenders', status, snap.size);
+    }
+  },
+);
+
+// ── Prompt enhancer ──────────────────────────────────────────────────────────
+//
+// Turns a user's rough description (and chosen finishes) into a richer, vivid
+// interior-design prompt for the render. Reuses the GEMINI_API_KEY secret and a
+// small/fast text model.
+export const enhancePrompt = onCall(
+  {
+    secrets: [GEMINI_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB',
+    region: 'us-central1',
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.');
+
+    const raw = String(request.data?.prompt ?? '').trim().slice(0, 600);
+    const materialNames = Array.isArray(request.data?.materialNames)
+      ? request.data.materialNames
+          .filter((x) => typeof x === 'string')
+          .slice(0, 5)
+      : [];
+    if (!raw && !materialNames.length) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Add a short description or pick a material first.',
+      );
+    }
+
+    const materialsLine = materialNames.length
+      ? ` The user has chosen these Amira finishes: ${materialNames.join(', ')}.`
+      : '';
+    const systemInstruction =
+      'You refine a user\'s short interior-design request into a clear, ' +
+      'render-ready prompt for an AI room visualiser. Keep the user\'s intent ' +
+      'exactly as written; expand it into 1-2 concise, concrete sentences ' +
+      'describing what to add or change and a fitting style. Do not invent ' +
+      'unrelated changes. Return ONLY the prompt text — no preamble, quotes ' +
+      'or labels.' + materialsLine;
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
+      const response = await ai.models.generateContent({
+        model: CHAT_MODEL_DEFAULT,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text:
+                  'Rough idea: ' +
+                  (raw || '(none — infer a tasteful look from the chosen finishes)'),
+              },
+            ],
+          },
+        ],
+        config: {
+          temperature: 0.7,
+          systemInstruction,
+          maxOutputTokens: 256,
+          // Gemini 2.5 spends "thinking" tokens from the output budget; with a
+          // small cap that can leave no room for the actual answer (empty text,
+          // finishReason MAX_TOKENS). Disable thinking for this simple rewrite.
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+      const enhanced = (response?.text ?? '').trim();
+      if (!enhanced) {
+        const finishReason = response?.candidates?.[0]?.finishReason;
+        const blockReason = response?.promptFeedback?.blockReason;
+        console.error('enhancePrompt: empty result', { finishReason, blockReason });
+        throw new HttpsError(
+          'internal',
+          `Could not enhance the prompt${finishReason ? ` (${finishReason})` : ''}.`,
+        );
+      }
+      return { prompt: enhanced };
+    } catch (e) {
+      console.error('enhancePrompt failed:', e?.message);
+      if (e instanceof HttpsError) throw e;
+      throw new HttpsError('internal', e?.message || 'Could not enhance the prompt.');
     }
   },
 );

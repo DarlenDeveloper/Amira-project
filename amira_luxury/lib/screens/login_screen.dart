@@ -59,7 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _usePhone = true;
   bool _isSignup = false;
-  final bool _obscurePassword = true;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   _Country _country = _countries.first; // default Uganda
   bool _bgCached = false;
   bool _loading = false;
@@ -456,7 +457,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               icon: Iconsax.lock_1,
                               hint: 'confirm password',
                               controller: _confirmController,
-                              obscure: true,
+                              obscure: _obscureConfirm,
+                              trailing: _eyeToggle(
+                                obscured: _obscureConfirm,
+                                onTap: () => setState(
+                                    () => _obscureConfirm = !_obscureConfirm),
+                              ),
                             ),
                             const SizedBox(height: 14),
                             _textPill(
@@ -696,13 +702,39 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _passwordField() {
+    // "I forgot" only applies to email login — phone has no reset address.
+    final forgot = (_isSignup || _usePhone) ? null : _forgotPill();
     return _textPill(
       icon: Iconsax.key,
       hint: 'password',
       controller: _passwordController,
       obscure: _obscurePassword,
-      // "I forgot" only applies to email login — phone has no reset address.
-      trailing: (_isSignup || _usePhone) ? null : _forgotPill(),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _eyeToggle(
+            obscured: _obscurePassword,
+            onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+          ),
+          if (forgot != null) forgot,
+        ],
+      ),
+    );
+  }
+
+  // Tappable eye icon that shows/hides the text in a password pill.
+  Widget _eyeToggle({required bool obscured, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Icon(
+          obscured ? Iconsax.eye_slash : Iconsax.eye,
+          size: 18,
+          color: _grey,
+        ),
+      ),
     );
   }
 

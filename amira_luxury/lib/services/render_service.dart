@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -78,10 +79,15 @@ class RenderService {
     });
   }
 
-  /// Generates the AI render for an existing session.
+  /// Generates the AI render for an existing session. The latest material
+  /// selection and prompt are sent so they override whatever was stored when
+  /// the session started (selection is decoupled from upload).
   Future<String> generateRender({
     required String renderId,
     bool forceRetry = false,
+    List<String> productIds = const [],
+    List<String> materialNames = const [],
+    String prompt = '',
   }) async {
     final callable = _functions.httpsCallable(
       'generateRender',
@@ -90,10 +96,41 @@ class RenderService {
     final res = await callable.call<Map<String, dynamic>>({
       'renderId': renderId,
       if (forceRetry) 'forceRetry': true,
+      'productIds': productIds,
+      'materialNames': materialNames,
+      'prompt': prompt,
     });
     final url = res.data['resultUrl'] as String?;
     if (url == null || url.isEmpty) throw Exception('No render returned.');
     return url;
+  }
+
+  /// Turns a rough description (and chosen finishes) into a richer design
+  /// prompt via the `enhancePrompt` Cloud Function.
+  Future<String> enhancePrompt({
+    required String prompt,
+    List<String> materialNames = const [],
+  }) async {
+    final callable = _functions.httpsCallable(
+      'enhancePrompt',
+      options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
+    );
+    final res = await callable.call<Map<String, dynamic>>({
+      'prompt': prompt,
+      'materialNames': materialNames,
+    });
+    final out = res.data['prompt'] as String?;
+    if (out == null || out.isEmpty) throw Exception('No enhanced prompt returned.');
+    return out;
+  }
+
+  /// Downloads the bytes of a render result (a Firebase Storage download URL)
+  /// so it can be saved to the device gallery.
+  Future<Uint8List> fetchRenderBytes(String url) async {
+    final ref = _storage.refFromURL(url);
+    final bytes = await ref.getData(20 * 1024 * 1024); // up to 20 MB
+    if (bytes == null) throw Exception('Could not download the render.');
+    return bytes;
   }
 
   /// Live list of the signed-in user's past renders, newest first.

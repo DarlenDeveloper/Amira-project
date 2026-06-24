@@ -3,6 +3,9 @@
          access in release builds. Flutter only adds this to the debug/profile
          manifests by default, so a release build needs it declared here. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- gal: saving generated renders to the gallery on Android 9 and below. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <application
         android:label="Amira Luxury"
         android:name="${applicationName}"
