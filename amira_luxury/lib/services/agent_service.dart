@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 /// Talks to the Amira AI agent. The behaviour (persona, model, greeting,
 /// suggestions, on/off) is controlled from the admin dashboard via the
@@ -12,6 +16,27 @@ class AgentService {
   final FirebaseFunctions _functions =
       FirebaseFunctions.instanceFor(region: 'us-central1');
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  /// Uploads a chat image to `ai-agent/{uid}/{conversationId}/{ts}.jpg` and
+  /// returns its download URL. Uses a temporary folder when the conversation
+  /// hasn't been created yet (first message).
+  Future<String> uploadChatImage(File file, {String? conversationId}) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'You need to be signed in to send a photo.',
+      );
+    }
+    final convo = conversationId ?? 'new-${DateTime.now().millisecondsSinceEpoch}';
+    final ref = _storage.ref(
+      'ai-agent/$uid/$convo/${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
+  }
 
   /// Admin-tuned presentation config for the welcome screen.
   Future<AgentConfig> loadConfig() async {
@@ -43,10 +68,11 @@ class AgentService {
     String? productId,
     String source = 'typed',
     String? suggestionLabel,
+    String? imageUrl,
   }) async {
     final callable = _functions.httpsCallable(
       'chatAgent',
-      options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
+      options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
     );
     final res = await callable.call<Map<String, dynamic>>({
       'message': message,
@@ -54,6 +80,7 @@ class AgentService {
       if (productId != null) 'productId': productId,
       'source': source,
       if (suggestionLabel != null) 'suggestionLabel': suggestionLabel,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     });
     final data = res.data;
     return AgentReply(

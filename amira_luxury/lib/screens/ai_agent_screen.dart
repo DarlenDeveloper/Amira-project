@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
 import '../models/product.dart';
@@ -32,6 +34,13 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
   AnimationController? _borderAnimationController;
+
+  // Image attachment state for photo-in-chat.
+  final ImagePicker _picker = ImagePicker();
+  XFile? _pickedImage;
+  String? _uploadedImageUrl;
+  bool _uploadingImage = false;
+  bool _uploadFailed = false;
 
   // Live conversation state.
   String? _conversationId;
@@ -206,14 +215,20 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     String? suggestionLabel,
   }) async {
     final text = (overrideText ?? _textController.text).trim();
-    if (text.isEmpty || _sending) return;
+    final imageUrl = _uploadedImageUrl;
+    // Need either text or an attached image; never send while still uploading.
+    if ((text.isEmpty && imageUrl == null) || _sending || _uploadingImage) {
+      return;
+    }
 
     final productId = _pendingProductId;
     final msgSource = suggestionLabel != null ? 'suggestion' : source;
 
     setState(() {
-      _messages.add({'text': text, 'isUser': true});
+      _messages.add({'text': text, 'isUser': true, 'imageUrl': imageUrl});
       if (overrideText == null) _textController.clear();
+      _pickedImage = null;
+      _uploadedImageUrl = null;
       _sending = true;
     });
     _scrollToBottom();
@@ -225,6 +240,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
         productId: productId,
         source: msgSource,
         suggestionLabel: suggestionLabel,
+        imageUrl: imageUrl,
       );
       if (!mounted) return;
       setState(() {
@@ -255,6 +271,115 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
         _sending = false;
       });
     }
+  }
+
+  // Lets the user attach a room photo from camera or gallery, then uploads it
+  // in the background so it's ready to send with the next message.
+  void _chooseImageSource() {
+    if (!_agentEnabled) {
+      _showUnavailable('The Amira Agent');
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Iconsax.camera5, color: _gold),
+              title: const Text('Take a photo',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans')),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Iconsax.gallery5, color: _gold),
+              title: const Text('Choose from gallery',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans')),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 2000,
+        imageQuality: 88,
+      );
+      if (file == null) return;
+      setState(() {
+        _pickedImage = file;
+        _uploadedImageUrl = null;
+        _uploadFailed = false;
+        _uploadingImage = true;
+      });
+      await _uploadPicked();
+    } catch (_) {
+      // Picker itself failed (rare). Keep things quiet; no snackbar.
+    }
+  }
+
+  // Uploads the currently picked image in the background. On failure the
+  // thumbnail stays put with an inline retry — ChatGPT-style, no snackbar.
+  Future<void> _uploadPicked() async {
+    final picked = _pickedImage;
+    if (picked == null) return;
+    setState(() {
+      _uploadingImage = true;
+      _uploadFailed = false;
+    });
+    try {
+      final url = await AgentService.instance.uploadChatImage(
+        File(picked.path),
+        conversationId: _conversationId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _uploadedImageUrl = url;
+        _uploadingImage = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _uploadedImageUrl = null;
+        _uploadingImage = false;
+        _uploadFailed = true;
+      });
+    }
+  }
+
+  void _clearPickedImage() {
+    setState(() {
+      _pickedImage = null;
+      _uploadedImageUrl = null;
+      _uploadingImage = false;
+      _uploadFailed = false;
+    });
   }
 
   List<Product> _linkedProducts(String text) {
@@ -380,6 +505,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                       return _MessageBubble(
                         text: text,
                         isUser: isUser,
+                        imageUrl: msg['imageUrl'] as String?,
                         linkedProducts: isUser ? const [] : _linkedProducts(text),
                       );
                     },
@@ -530,55 +656,58 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
               color: _white,
               borderRadius: BorderRadius.circular(30),
             ),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                GestureDetector(
-                  onTap: () => _showUnavailable('Image upload'),
-                  child: const Icon(Iconsax.gallery, color: Color(0xFF8B8B8B), size: 24),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () => _showUnavailable('Voice input'),
-                  child: const Icon(Iconsax.microphone, color: Color(0xFF8B8B8B), size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    focusNode: _focusNode,
-                    onSubmitted: (_) => _sendMessage(),
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: _dark,
+                if (_pickedImage != null) _buildImagePreview(),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _chooseImageSource,
+                      child: const Icon(Iconsax.gallery,
+                          color: Color(0xFF8B8B8B), size: 24),
                     ),
-                    decoration: const InputDecoration(
-                      hintText: 'Ask Amira agent',
-                      hintStyle: TextStyle(
-                        color: Color(0xFFB8B8B8),
-                        fontSize: 15,
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontWeight: FontWeight.w400,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        onSubmitted: (_) => _sendMessage(),
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: _dark,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'Ask Amira agent',
+                          hintStyle: TextStyle(
+                            color: Color(0xFFB8B8B8),
+                            fontSize: 15,
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w400,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 10),
+                        ),
                       ),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _sendMessage,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1A1A1A),
-                      shape: BoxShape.circle,
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _sendMessage,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1A1A1A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_upward_rounded,
+                            color: Colors.white, size: 22),
+                      ),
                     ),
-                    child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -587,16 +716,97 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       },
     );
   }
+
+  // Attached photo shown above the composer, ChatGPT-style: a rounded thumbnail
+  // with a ✕ badge on its corner, an upload spinner while it uploads, and a
+  // tap-to-retry overlay if the upload failed. No snackbars.
+  Widget _buildImagePreview() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: 84,
+          height: 84,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.file(
+                  File(_pickedImage!.path),
+                  width: 76,
+                  height: 76,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              if (_uploadingImage)
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                ),
+              if (_uploadFailed)
+                GestureDetector(
+                  onTap: _uploadPicked,
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.refresh, color: Colors.white, size: 26),
+                    ),
+                  ),
+                ),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: GestureDetector(
+                  onTap: _clearPickedImage,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: _dark,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _white, width: 1.5),
+                    ),
+                    child: const Icon(Icons.close, size: 13, color: _white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _MessageBubble extends StatelessWidget {
   final String text;
   final bool isUser;
+  final String? imageUrl;
   final List<Product> linkedProducts;
 
   const _MessageBubble({
     required this.text,
     required this.isUser,
+    this.imageUrl,
     this.linkedProducts = const [],
   });
 
@@ -627,24 +837,49 @@ class _MessageBubble extends StatelessWidget {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isUser ? _dark : _white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: isUser ? _white : _dark,
-                      fontFamily: 'Plus Jakarta Sans',
-                      height: 1.4,
+                if (imageUrl != null)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: text.isNotEmpty ? 8 : 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Image.network(
+                        imageUrl!,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            width: 200,
+                            height: 200,
+                            color: _lightGrey,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                  color: _gold, strokeWidth: 2),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
+                if (text.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: isUser ? _dark : _white,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w400,
+                        color: isUser ? _white : _dark,
+                        fontFamily: 'Plus Jakarta Sans',
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
                 if (!isUser && linkedProducts.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Wrap(
@@ -852,19 +1087,19 @@ class _StreamingAgentBubbleState extends State<_StreamingAgentBubble> {
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                   decoration: BoxDecoration(
                     color: _white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: Text(
                     shown,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w400,
                       color: _dark,
                       fontFamily: 'Plus Jakarta Sans',
-                      height: 1.4,
+                      height: 1.35,
                     ),
                   ),
                 ),

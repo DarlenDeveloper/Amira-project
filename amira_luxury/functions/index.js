@@ -686,7 +686,7 @@ async function loadCatalogueContext(dbRef) {
 export const chatAgent = onCall(
   {
     secrets: [GEMINI_API_KEY],
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     memory: '512MiB',
     region: 'us-central1',
   },
@@ -695,7 +695,12 @@ export const chatAgent = onCall(
     if (!uid) throw new HttpsError('unauthenticated', 'Sign in required.');
 
     const message = String(request.data?.message ?? '').trim();
-    if (!message) throw new HttpsError('invalid-argument', 'message is required.');
+    const imageUrl = request.data?.imageUrl
+      ? String(request.data.imageUrl).trim()
+      : null;
+    if (!message && !imageUrl) {
+      throw new HttpsError('invalid-argument', 'message or image is required.');
+    }
     let conversationId = request.data?.conversationId || null;
     const productId = request.data?.productId
       ? String(request.data.productId).trim()
@@ -786,6 +791,7 @@ export const chatAgent = onCall(
       source,
       productId: productId || null,
       suggestionLabel,
+      imageUrl: imageUrl || null,
       status: 'sent',
       time: FieldValue.serverTimestamp(),
     });
@@ -807,6 +813,27 @@ export const chatAgent = onCall(
       history = [{ role: 'user', parts: [{ text: message }] }];
     }
 
+    // Attach the uploaded image (if any) to the most recent user turn so the
+    // model can see the room photo. Add a default prompt if no text was typed.
+    if (imageUrl) {
+      try {
+        const img = await fetchInlineImage(imageUrl);
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].role === 'user') {
+            if (!history[i].parts[0] || !history[i].parts[0].text) {
+              history[i].parts[0] = {
+                text: 'Please look at this room photo and help me.',
+              };
+            }
+            history[i].parts.push(img);
+            break;
+          }
+        }
+      } catch (e) {
+        console.warn('chatAgent: image fetch failed:', e.message);
+      }
+    }
+
     let catalogue = await loadCatalogueContext(db);
     if (productId && productName) {
       catalogue += `\n\nThe user is asking about product: ${productName} (id: ${productId}).`;
@@ -814,16 +841,20 @@ export const chatAgent = onCall(
     const systemInstruction = config.persona + catalogue;
 
     let reply;
-    let modelUsed = config.model;
+    // Vision turns need a multimodal model regardless of the admin's text model.
+    let modelUsed = imageUrl ? 'gemini-2.5-flash' : config.model;
     try {
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
-        model: config.model,
+        model: modelUsed,
         contents: history,
         config: {
           temperature: config.temperature,
           systemInstruction,
-          maxOutputTokens: 600,
+          maxOutputTokens: 800,
+          // Gemini 2.5 spends "thinking" tokens from the output budget, which
+          // truncates replies mid-sentence. Disable it for chat responses.
+          thinkingConfig: { thinkingBudget: 0 },
         },
       });
       reply = (response?.text ?? '').trim();
