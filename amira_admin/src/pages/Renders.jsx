@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Fragment, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Thumb from '../components/Thumb.jsx';
@@ -40,8 +39,6 @@ export default function Renders() {
     if (tab !== 'in-progress') return data;
     return data.filter((r) => inProgressStatuses.includes(r.status));
   }, [data, tab]);
-
-  const selected = filtered.find((r) => r.id === active);
 
   return (
     <div className="page">
@@ -87,30 +84,75 @@ export default function Renders() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={r.id}
-                className={r.id === active ? 'row--active' : ''}
-                onClick={() => setActive(r.id)}
-                style={{ cursor: 'pointer' }}
-              >
-                <td>
-                  <div className="cell-strong">{r.customer || '—'}</div>
-                  <div className="cell-sub">{r.email || ''}</div>
-                </td>
-                <td><StatusBadge status={r.status} /></td>
-                <td className="cell-muted">
-                  {(r.materialNames || []).join(', ') || '—'}
-                </td>
-                <td className="cell-muted">
-                  {(r.prompt || '').slice(0, 40)}{(r.prompt || '').length > 40 ? '…' : ''}
-                </td>
-                <td>
-                  <Thumb src={r.resultUrl || r.roomImageUrl} className="thumb-sm" />
-                </td>
-                <td className="cell-muted">{formatDateTime(r.createdAt)}</td>
-              </tr>
-            ))}
+            {filtered.map((r) => {
+              const isOpen = r.id === active;
+              return (
+                <Fragment key={r.id}>
+                  <tr
+                    className={isOpen ? 'row--active' : ''}
+                    onClick={() => setActive(isOpen ? null : r.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td>
+                      <div className="cell-strong">
+                        <span className={`row-caret${isOpen ? ' row-caret--open' : ''}`}>
+                          ▸
+                        </span>
+                        {r.customer || '—'}
+                      </div>
+                      <div className="cell-sub">{r.email || ''}</div>
+                    </td>
+                    <td><StatusBadge status={r.status} /></td>
+                    <td className="cell-muted">
+                      {(r.materialNames || []).join(', ') || '—'}
+                    </td>
+                    <td className="cell-muted">
+                      {(r.prompt || '').slice(0, 40)}{(r.prompt || '').length > 40 ? '…' : ''}
+                    </td>
+                    <td>
+                      <Thumb src={r.resultUrl || r.roomImageUrl} className="thumb-sm" />
+                    </td>
+                    <td className="cell-muted">{formatDateTime(r.createdAt)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="render-detail-row">
+                      <td className="render-detail-cell" colSpan={6}>
+                        <div className="render-detail">
+                          <div className="render-detail-imgs">
+                            {r.roomImageUrl && (
+                              <figure className="render-detail-fig">
+                                <img src={r.roomImageUrl} alt="Room" className="render-detail-img" />
+                                <figcaption>Room photo</figcaption>
+                              </figure>
+                            )}
+                            {r.resultUrl && (
+                              <figure className="render-detail-fig">
+                                <img src={r.resultUrl} alt="Result" className="render-detail-img" />
+                                <figcaption>AI render</figcaption>
+                              </figure>
+                            )}
+                          </div>
+                          {r.error && (
+                            <p className="form-error"><strong>Error:</strong> {r.error}</p>
+                          )}
+                          <div className="render-detail-meta">
+                            <div><span className="rd-label">Status</span><span className="rd-value">{r.status}</span></div>
+                            <div><span className="rd-label">Source</span><span className="rd-value">{r.source || '—'}</span></div>
+                            <div><span className="rd-label">Materials</span><span className="rd-value">{(r.materialNames || []).join(', ') || '—'}</span></div>
+                            <div><span className="rd-label">Prompt</span><span className="rd-value">{r.prompt || '—'}</span></div>
+                            <div><span className="rd-label">Room path</span><span className="rd-value">{r.roomStoragePath || '—'}</span></div>
+                            <div><span className="rd-label">Result path</span><span className="rd-value">{r.resultStoragePath || '—'}</span></div>
+                            {r.uid && (
+                              <div><span className="rd-label">User ID</span><span className="rd-value">{r.uid}</span></div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
         {loading && <p className="empty">Loading…</p>}
@@ -125,34 +167,6 @@ export default function Renders() {
           </div>
         )}
       </div>
-
-      {selected && (
-        <aside className="drawer-panel" style={{ marginTop: 24 }}>
-          <h2 className="agent-recent-title">Session detail</h2>
-          <p><strong>Status:</strong> {selected.status}</p>
-          {selected.error && (
-            <p className="form-error"><strong>Error:</strong> {selected.error}</p>
-          )}
-          <p className="cell-muted"><strong>Room path:</strong> {selected.roomStoragePath || '—'}</p>
-          <p className="cell-muted"><strong>Result path:</strong> {selected.resultStoragePath || '—'}</p>
-          <p className="cell-muted"><strong>Source:</strong> {selected.source || '—'}</p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-            {selected.roomImageUrl && (
-              <img src={selected.roomImageUrl} alt="Room" style={{ maxWidth: 200, borderRadius: 8 }} />
-            )}
-            {selected.resultUrl && (
-              <img src={selected.resultUrl} alt="Result" style={{ maxWidth: 200, borderRadius: 8 }} />
-            )}
-          </div>
-          {selected.uid && (
-            <p style={{ marginTop: 12 }}>
-              <Link to="/customers">View customers</Link>
-              {' · '}
-              <span className="cell-muted">uid: {selected.uid}</span>
-            </p>
-          )}
-        </aside>
-      )}
     </div>
   );
 }

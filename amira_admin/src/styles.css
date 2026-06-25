@@ -314,6 +314,15 @@ body { margin: 0; }
   object-fit: cover;
   flex: 0 0 42px;
 }
+/* Small preview thumbnail (e.g. Renders table Preview column). */
+.thumb-sm {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  background: #EDEDE8;
+}
 .avatar {
   width: 38px;
   height: 38px;
@@ -1281,4 +1290,75 @@ body { margin: 0; }
   font-size: 16px;
   font-weight: 700;
   margin-top: 4px;
+}
+
+/* ── Renders: expandable session detail row ─────────────────────────────── */
+.row-caret {
+  display: inline-block;
+  margin-right: 8px;
+  color: #C4A464;
+  font-size: 11px;
+  transition: transform 0.18s ease;
+}
+.row-caret--open { transform: rotate(90deg); }
+
+.row--active > td { background: #FBF7EF; }
+
+.render-detail-cell {
+  background: #FBF7EF;
+  padding: 0;
+  border-top: 1px solid #EFD8AF;
+}
+.render-detail {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.render-detail-imgs {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.render-detail-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.render-detail-img {
+  width: 240px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+.render-detail-fig figcaption {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #8A8A84;
+}
+.render-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 28px;
+}
+.render-detail-meta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rd-label {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #9A9A94;
+}
+.rd-value {
+  font-size: 13px;
+  color: #110C04;
+  word-break: break-word;
 }
