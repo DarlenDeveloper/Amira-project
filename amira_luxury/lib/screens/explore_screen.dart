@@ -129,7 +129,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     );
                   },
                   behavior: HitTestBehavior.opaque,
-                  child: const Icon(Icons.shopping_bag_rounded,
+                  child: const Icon(Icons.shopping_cart_rounded,
                       color: _dark, size: 26),
                 ),
               ],

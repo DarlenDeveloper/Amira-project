@@ -64,8 +64,7 @@ class CustomBottomNav extends StatelessWidget {
                   label: 'Explore',
                   isActive: currentIndex == 1,
                   onTap: () => onTap(1),
-                  isSvg: true,
-                  svgPath: 'assets/images/discover_icon.svg',
+                  icon: Iconsax.search_normal_1,
                 ),
                 _NavIconOnly(
                   key: kNavStudioKey,

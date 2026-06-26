@@ -23,7 +23,7 @@ const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const RENDER_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const RENDER_RATE_LIMIT = 3; // renders allowed per user…
+const RENDER_RATE_LIMIT = 0; // renders allowed per user per rolling hour (0 = disabled)
 const RENDER_RATE_WINDOW_MS = 60 * 60 * 1000; // …per rolling hour
 
 // Rolling-window rate limit stored as a timestamp list under
@@ -54,6 +54,7 @@ async function recordRenderHit(db, uid) {
 }
 
 function assertUnderRenderLimit(count) {
+  if (RENDER_RATE_LIMIT <= 0) return; // rate limiting disabled
   if (count >= RENDER_RATE_LIMIT) {
     throw new HttpsError(
       'resource-exhausted',
@@ -374,20 +375,29 @@ export const generateRender = onCall(
 
       const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
       const instruction =
-        'Edit the FIRST image (the user\'s room) by applying only the ' +
-        'material' + names + ' from the reference image(s) onto the matching ' +
-        'surface. Use the references for texture and colour only. Keep the ' +
-        'room otherwise identical: do not add, remove or move any furniture, ' +
-        'decor or objects, and keep the layout, perspective and lighting ' +
-        'unchanged.' +
-        (prompt ? ' Optional: ' + prompt : '');
+        'Use the FIRST image as the exact base scene: a real photograph of the ' +
+        'user\'s room. Re-finish the room by applying the material(s)' + names +
+        ' from the reference image(s) as a realistic surface finish. Apply each ' +
+        'material to the surface it naturally belongs to — wall finishes ' +
+        '(panels, marble, stone and similar) lie flat on the relevant wall, ' +
+        'flooring goes on the floor, blinds on the window, and so on. Treat the ' +
+        'reference images strictly as texture and colour swatches: do not insert ' +
+        'them as objects, framed pictures, panels, partitions or freestanding ' +
+        'pieces, and never lay a wall material across the floor or ceiling. ' +
+        'Change only that one surface\'s finish. Keep everything else identical ' +
+        'to the original photograph — the same camera angle, framing and ' +
+        'proportions, and the same floor, ceiling, windows, trim, doors, other ' +
+        'walls, furniture, decor and lighting. The result must look like the ' +
+        'same photo of the same room with only that surface refinished, ' +
+        'photorealistic and lit to match.' +
+        (prompt ? ' User preferences: ' + prompt : '');
 
       const parts = [{ text: instruction }, room, ...products];
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
         model: IMAGE_MODEL,
         contents: [{ role: 'user', parts }],
-        config: { temperature: 0.15 },
+        config: { temperature: 0.1 },
       });
 
       const cand = response?.candidates?.[0];
@@ -461,19 +471,28 @@ async function runLegacyGenerateRender(uid, {
     }
     const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
     const instruction =
-      'Edit the FIRST image (the user\'s room) by applying only the ' +
-      'material' + names + ' from the reference image(s) onto the matching ' +
-      'surface. Use the references for texture and colour only. Keep the ' +
-      'room otherwise identical: do not add, remove or move any furniture, ' +
-      'decor or objects, and keep the layout, perspective and lighting ' +
-      'unchanged.' +
-      (prompt ? ' Optional: ' + prompt : '');
+      'Use the FIRST image as the exact base scene: a real photograph of the ' +
+      'user\'s room. Re-finish the room by applying the material(s)' + names +
+      ' from the reference image(s) as a realistic surface finish. Apply each ' +
+      'material to the surface it naturally belongs to — wall finishes ' +
+      '(panels, marble, stone and similar) lie flat on the relevant wall, ' +
+      'flooring goes on the floor, blinds on the window, and so on. Treat the ' +
+      'reference images strictly as texture and colour swatches: do not insert ' +
+      'them as objects, framed pictures, panels, partitions or freestanding ' +
+      'pieces, and never lay a wall material across the floor or ceiling. ' +
+      'Change only that one surface\'s finish. Keep everything else identical ' +
+      'to the original photograph — the same camera angle, framing and ' +
+      'proportions, and the same floor, ceiling, windows, trim, doors, other ' +
+      'walls, furniture, decor and lighting. The result must look like the ' +
+      'same photo of the same room with only that surface refinished, ' +
+      'photorealistic and lit to match.' +
+      (prompt ? ' User preferences: ' + prompt : '');
     const parts = [{ text: instruction }, room, ...products];
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts }],
-      config: { temperature: 0.15 },
+      config: { temperature: 0.1 },
     });
     const imgPart = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
     if (!imgPart) {

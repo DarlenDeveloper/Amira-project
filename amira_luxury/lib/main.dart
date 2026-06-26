@@ -41,7 +41,7 @@ class AmiraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Amira Luxury',
+      title: 'Amira Interiors',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Plus Jakarta Sans',
