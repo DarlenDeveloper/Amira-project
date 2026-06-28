@@ -10,6 +10,7 @@ import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/agent_service.dart';
 import '../services/product_service.dart';
+import '../utils/content_filter.dart';
 import '../widgets/coachmark.dart';
 import 'item_details_screen.dart';
 
@@ -224,6 +225,14 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
     final imageUrl = _uploadedImageUrl;
     // Need either text or an attached image; never send while still uploading.
     if ((text.isEmpty && imageUrl == null) || _sending || _uploadingImage) {
+      return;
+    }
+
+    // Keep the assistant on-brand: block clearly inappropriate input before it
+    // is sent. This is a UX guard — for real enforcement add a server-side
+    // check in the chatAgent function too.
+    if (ContentFilter.isBlocked(text)) {
+      _showUnsupportedMessage();
       return;
     }
 
@@ -711,6 +720,21 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
         content: Text(
           '$feature is unavailable for the moment.',
           style: const TextStyle(fontFamily: 'Plus Jakarta Sans'),
+        ),
+        backgroundColor: _dark,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // Shown when the composer blocks an off-brand / inappropriate message.
+  void _showUnsupportedMessage() {
+    FocusScope.of(context).unfocus();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Let's keep it about interior design — that message can't be sent.",
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans'),
         ),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
