@@ -51,6 +51,13 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.token.admin == true;
     }
 
+    // ── Categories (the company specialities products belong to) ──────────────
+    // Admin-authored. Any signed-in user may read; only an admin may write.
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // ── Portfolio (showcase projects) ─────────────────────────────────────────
     // Admin-authored. Any signed-in user may read; only an admin may write.
     match /portfolio/{portfolioId} {
