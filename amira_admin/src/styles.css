@@ -491,6 +491,28 @@ body { margin: 0; }
 }
 .bubble--user { background: var(--ink); color: #fff; border-bottom-right-radius: 6px; }
 .bubble--agent { background: var(--white); color: var(--ink); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.bubble-text { white-space: pre-wrap; }
+/* Image attachments sent from the app's agent chat. */
+.bubble-image { display: block; }
+.bubble-image + .bubble-text { display: block; margin-top: 8px; }
+.bubble-image img {
+  display: block;
+  max-width: 240px;
+  max-height: 260px;
+  width: auto;
+  border-radius: 12px;
+  object-fit: cover;
+}
+/* Centered system notices (e.g. agent unavailable). */
+.bubble-row.from-system { align-self: center; align-items: center; max-width: 90%; }
+.bubble--system {
+  background: #f3efe7;
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  text-align: center;
+  border-radius: 12px;
+}
 .bubble-time { font-size: 11px; color: var(--muted); }
 .empty { padding: 40px; color: var(--muted); }
 

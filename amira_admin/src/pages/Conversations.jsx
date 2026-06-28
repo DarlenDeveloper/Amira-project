@@ -155,24 +155,47 @@ export default function Conversations() {
                 </div>
               </div>
               <div className="thread-body">
-                {orderedMessages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`bubble-row ${m.from === 'user' ? 'from-user' : 'from-agent'}`}
-                  >
+                {orderedMessages.map((m) => {
+                  // System notices (e.g. "agent unavailable") aren't from the
+                  // customer or the AI — show them as a centered notice.
+                  if (m.from === 'system') {
+                    return (
+                      <div key={m.id} className="bubble-row from-system">
+                        <div className="bubble bubble--system">{m.text}</div>
+                        <span className="bubble-time">{msgTime(m.time)}</span>
+                      </div>
+                    );
+                  }
+                  const isUser = m.from === 'user';
+                  return (
                     <div
-                      className={`bubble ${m.from === 'user' ? 'bubble--user' : 'bubble--agent'}${
-                        m.status === 'error' ? ' bubble--error' : ''
-                      }`}
+                      key={m.id}
+                      className={`bubble-row ${isUser ? 'from-user' : 'from-agent'}`}
                     >
-                      {m.text}
-                      {m.source && m.from === 'user' && (
-                        <span className="bubble-meta"> · {m.source}</span>
-                      )}
+                      <div
+                        className={`bubble ${isUser ? 'bubble--user' : 'bubble--agent'}${
+                          m.status === 'error' ? ' bubble--error' : ''
+                        }`}
+                      >
+                        {m.imageUrl && (
+                          <a
+                            href={m.imageUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bubble-image"
+                          >
+                            <img src={m.imageUrl} alt="Attachment" loading="lazy" />
+                          </a>
+                        )}
+                        {m.text && <span className="bubble-text">{m.text}</span>}
+                        {m.source && isUser && (
+                          <span className="bubble-meta"> · {m.source}</span>
+                        )}
+                      </div>
+                      <span className="bubble-time">{msgTime(m.time)}</span>
                     </div>
-                    <span className="bubble-time">{msgTime(m.time)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : (
