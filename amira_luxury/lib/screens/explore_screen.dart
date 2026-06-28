@@ -25,8 +25,9 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  int _selectedFilter = 0;
-  final List<String> _filters = ['ALL', 'FLUTED PANELS', 'WPC PANELS'];
+  // Active category filter; 'ALL' shows everything. Driven by the live
+  // catalogue's categories (see build), not a hardcoded list.
+  String _selectedCategory = 'ALL';
 
   // Coachmark anchors + trigger state.
   final GlobalKey _tipCartKey = GlobalKey();
@@ -138,87 +139,126 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
           const SizedBox(height: 20),
 
-          // Fixed filter pills
-          SizedBox(
-            key: _tipFilterKey,
-            height: 44,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _filters.length,
-              itemBuilder: (_, i) {
-                final isActive = i == _selectedFilter;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedFilter = i),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isActive ? Colors.black : _white.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        _filters[i],
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isActive ? _white : _grey,
-                          fontFamily: 'Plus Jakarta Sans',
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Scrolling material grid (live catalogue)
+          // Live catalogue: filter pills (built from real categories) + grid,
+          // both fed by the same products stream so the filter actually applies.
           Expanded(
             child: StreamBuilder<List<Product>>(
               stream: ProductService.instance.watchProducts(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const _SkeletonGrid();
-                }
+                final loading =
+                    snapshot.connectionState == ConnectionState.waiting;
                 final products = snapshot.data ?? const <Product>[];
-                return StreamBuilder<Set<String>>(
-                  stream: ShopService.instance.watchFavouriteIds(),
-                  builder: (context, favSnap) {
-                    final favourites = favSnap.data ?? const <String>{};
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 22,
-                        childAspectRatio: 0.66,
+                final categories = <String>[
+                  'ALL',
+                  ...ProductService.instance.categoriesOf(products),
+                ];
+                // Keep the selection valid as the live category set changes.
+                final selected =
+                    categories.contains(_selectedCategory) ? _selectedCategory : 'ALL';
+                final filtered = selected == 'ALL'
+                    ? products
+                    : products.where((p) => p.category == selected).toList();
+
+                return Column(
+                  children: [
+                    // Filter pills
+                    SizedBox(
+                      key: _tipFilterKey,
+                      height: 44,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: categories.length,
+                        itemBuilder: (_, i) {
+                          final label = categories[i];
+                          final isActive = label == selected;
+                          return GestureDetector(
+                            onTap: () =>
+                                setState(() => _selectedCategory = label),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? Colors.black
+                                    : _white.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  label.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: isActive ? _white : _grey,
+                                    fontFamily: 'Plus Jakarta Sans',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      itemCount: products.length,
-                      itemBuilder: (_, i) {
-                        final card = _MaterialCard(
-                          product: products[i],
-                          isFavourite: favourites.contains(products[i].id),
-                        );
-                        // Anchor the first card for the coachmark tour.
-                        return i == 0
-                            ? KeyedSubtree(key: _tipGridKey, child: card)
-                            : card;
-                      },
-                    );
-                  },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Material grid (filtered)
+                    Expanded(
+                      child: loading
+                          ? const _SkeletonGrid()
+                          : StreamBuilder<Set<String>>(
+                              stream: ShopService.instance.watchFavouriteIds(),
+                              builder: (context, favSnap) {
+                                final favourites =
+                                    favSnap.data ?? const <String>{};
+                                if (filtered.isEmpty) {
+                                  return const Center(
+                                    child: Text(
+                                      'No materials in this category yet.',
+                                      style: TextStyle(
+                                        color: _grey,
+                                        fontFamily: 'Plus Jakarta Sans',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return GridView.builder(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 22,
+                                    childAspectRatio: 0.66,
+                                  ),
+                                  itemCount: filtered.length,
+                                  itemBuilder: (_, i) {
+                                    final card = _MaterialCard(
+                                      product: filtered[i],
+                                      isFavourite:
+                                          favourites.contains(filtered[i].id),
+                                    );
+                                    // Anchor the first card for the coachmark.
+                                    return i == 0
+                                        ? KeyedSubtree(
+                                            key: _tipGridKey, child: card)
+                                        : card;
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 );
               },
             ),
