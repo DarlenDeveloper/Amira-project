@@ -38,6 +38,28 @@ class AgentService {
     return ref.getDownloadURL();
   }
 
+  /// Live conversation document — used to watch the `mode` field so the app
+  /// knows when an admin has taken over the thread (AI paused).
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchConversation(
+    String conversationId,
+  ) {
+    return _db.collection('conversations').doc(conversationId).snapshots();
+  }
+
+  /// Live messages for a thread, oldest → newest. The app uses this to surface
+  /// replies that don't come back through the `chatAgent` round-trip — namely
+  /// messages an Amira specialist sends after intervening.
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(
+    String conversationId,
+  ) {
+    return _db
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('time')
+        .snapshots();
+  }
+
   /// Admin-tuned presentation config for the welcome screen.
   Future<AgentConfig> loadConfig() async {
     try {

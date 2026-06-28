@@ -17,6 +17,7 @@ import {
   deleteDoc,
   setDoc,
   serverTimestamp,
+  increment,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebase.js';
@@ -171,6 +172,43 @@ export function updateDocById(path, id, data) {
 
 export function deleteDocById(path, id) {
   return deleteDoc(doc(db, path, id));
+}
+
+// ── Conversations: human intervention ──────────────────────────────────────────
+/**
+ * Take over a conversation from the AI. Sets the thread to human mode so the
+ * `chatAgent` function stops auto-replying — from here it's just the customer
+ * and the admin. One-way by design, but modeled as a `mode` field so a future
+ * "hand back to AI" is a data-free change.
+ */
+export function interveneConversation(conversationId) {
+  return updateDoc(doc(db, 'conversations', conversationId), {
+    mode: 'human',
+    interventionAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Post an admin reply into a conversation thread and bump the thread summary so
+ * it sorts to the top. Messages use a `time` field (matching the mobile app and
+ * the Cloud Function), not `createdAt`.
+ */
+export async function sendAdminMessage(conversationId, text) {
+  const clean = String(text || '').trim();
+  if (!clean) return;
+  await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+    from: 'admin',
+    text: clean,
+    status: 'sent',
+    time: serverTimestamp(),
+  });
+  await updateDoc(doc(db, 'conversations', conversationId), {
+    lastMessage: clean,
+    lastFrom: 'admin',
+    messageCount: increment(1),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ── Storage ──────────────────────────────────────────────────────────────────

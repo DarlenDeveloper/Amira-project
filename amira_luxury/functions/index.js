@@ -755,10 +755,46 @@ export const chatAgent = onCall(
         phone,
         status: 'open',
         source,
+        mode: 'agent',
         messageCount: 0,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
+    }
+
+    // If an admin has taken over this thread, the AI stays out of it. Persist
+    // the customer's message so the admin sees it, bump the thread summary, and
+    // return without generating a reply — the human handles it from here.
+    if (!isNewConvo) {
+      let convoMode = 'agent';
+      try {
+        const cur = await convRef.get();
+        if (cur.exists) convoMode = cur.data().mode || 'agent';
+      } catch (e) {
+        console.warn('chatAgent: mode lookup failed:', e.message);
+      }
+      if (convoMode === 'human') {
+        await messagesRef.add({
+          from: 'user',
+          text: message,
+          source,
+          productId: productId || null,
+          suggestionLabel,
+          imageUrl: imageUrl || null,
+          status: 'sent',
+          time: FieldValue.serverTimestamp(),
+        });
+        await convRef.set(
+          {
+            lastMessage: message || (imageUrl ? '📷 Photo' : ''),
+            lastFrom: 'user',
+            messageCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        return { conversationId, reply: '', mode: 'human' };
+      }
     }
 
     if (!config.enabled) {

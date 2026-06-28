@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
-import { useCollection, usePaginatedCollection, formatDate, formatDateTime, updateDocById } from '../db.js';
+import {
+  useCollection,
+  usePaginatedCollection,
+  formatDate,
+  formatDateTime,
+  updateDocById,
+  interveneConversation,
+  sendAdminMessage,
+} from '../db.js';
 
 const initials = (name) =>
   (name || '?')
@@ -87,8 +95,54 @@ export default function Conversations() {
 
   const openCount = conversations.filter((c) => c.status === 'open').length;
 
+  // The conversation list is a one-shot paginated fetch (not live), so a
+  // `mode: 'human'` write won't flow back into `active`. Track takeovers
+  // locally so the banner + composer appear immediately.
+  const [intervenedIds, setIntervenedIds] = useState(() => new Set());
+  const intervened =
+    active?.mode === 'human' || (!!activeId && intervenedIds.has(activeId));
+
   const resolve = async (id) => {
     await updateDocById('conversations', id, { status: 'resolved' });
+  };
+
+  // Take over the thread from the AI. Once intervened it's customer ↔ admin.
+  const [intervening, setIntervening] = useState(false);
+  const takeOver = async (id) => {
+    setIntervening(true);
+    try {
+      await interveneConversation(id);
+      setIntervenedIds((prev) => new Set(prev).add(id));
+    } finally {
+      setIntervening(false);
+    }
+  };
+
+  // Admin reply composer (only shown once a thread is intervened).
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  // Clear the draft when switching threads.
+  useEffect(() => {
+    setDraft('');
+  }, [activeId]);
+
+  const sendReply = async () => {
+    const text = draft.trim();
+    if (!text || sending || !activeId) return;
+    setSending(true);
+    try {
+      await sendAdminMessage(activeId, text);
+      setDraft('');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const onComposerKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendReply();
+    }
   };
 
   return (
@@ -147,6 +201,16 @@ export default function Conversations() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <StatusBadge status={active.status} />
+                  {!intervened && (
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      onClick={() => takeOver(active.id)}
+                      disabled={intervening}
+                    >
+                      {intervening ? 'Taking over…' : 'Intervene'}
+                    </button>
+                  )}
                   {active.status === 'open' && (
                     <button type="button" className="ghost-btn" onClick={() => resolve(active.id)}>
                       Resolve
@@ -155,6 +219,11 @@ export default function Conversations() {
                 </div>
               </div>
               <div className="thread-body">
+                {intervened && (
+                  <div className="intervene-banner">
+                    You've taken over this conversation — the AI assistant is paused.
+                  </div>
+                )}
                 {orderedMessages.map((m) => {
                   // System notices (e.g. "agent unavailable") aren't from the
                   // customer or the AI — show them as a centered notice.
@@ -167,16 +236,18 @@ export default function Conversations() {
                     );
                   }
                   const isUser = m.from === 'user';
+                  const isAdmin = m.from === 'admin';
                   return (
                     <div
                       key={m.id}
                       className={`bubble-row ${isUser ? 'from-user' : 'from-agent'}`}
                     >
                       <div
-                        className={`bubble ${isUser ? 'bubble--user' : 'bubble--agent'}${
-                          m.status === 'error' ? ' bubble--error' : ''
-                        }`}
+                        className={`bubble ${
+                          isUser ? 'bubble--user' : isAdmin ? 'bubble--admin' : 'bubble--agent'
+                        }${m.status === 'error' ? ' bubble--error' : ''}`}
                       >
+                        {isAdmin && <span className="bubble-sender">You · Amira team</span>}
                         {m.imageUrl && (
                           <a
                             href={m.imageUrl}
@@ -197,6 +268,25 @@ export default function Conversations() {
                   );
                 })}
               </div>
+              {intervened && (
+                <div className="thread-composer">
+                  <textarea
+                    rows={1}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={onComposerKeyDown}
+                    placeholder="Reply as the Amira team…"
+                  />
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    onClick={sendReply}
+                    disabled={sending || !draft.trim()}
+                  >
+                    {sending ? 'Sending…' : 'Send'}
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="empty">Select a conversation</p>

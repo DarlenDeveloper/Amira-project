@@ -491,6 +491,17 @@ body { margin: 0; }
 }
 .bubble--user { background: var(--ink); color: #fff; border-bottom-right-radius: 6px; }
 .bubble--agent { background: var(--white); color: var(--ink); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+/* Human admin replies — distinct from the AI agent, gold-accented. */
+.bubble--admin { background: #f6efe1; color: var(--ink); border: 1px solid #e7d3a6; border-bottom-left-radius: 6px; }
+.bubble-sender {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #8a7150;
+  margin-bottom: 4px;
+}
 .bubble-text { white-space: pre-wrap; }
 /* Image attachments sent from the app's agent chat. */
 .bubble-image { display: block; }
@@ -515,6 +526,49 @@ body { margin: 0; }
 }
 .bubble-time { font-size: 11px; color: var(--muted); }
 .empty { padding: 40px; color: var(--muted); }
+
+/* ── Intervention (admin takeover) ─────────────────────────────────────────── */
+.intervene-banner {
+  align-self: center;
+  max-width: 90%;
+  margin-bottom: 4px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #f6efe1;
+  border: 1px solid #e7d3a6;
+  color: #8a7150;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+.thread-composer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--white);
+}
+.thread-composer textarea {
+  flex: 1;
+  min-height: 42px;
+  max-height: 140px;
+  resize: vertical;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #faf8f3;
+}
+.thread-composer textarea:focus {
+  outline: none;
+  border-color: var(--gold, #c4a464);
+  background: var(--white);
+}
+.thread-composer .primary-btn { flex: 0 0 auto; }
 
 /* ── Notifications ──────────────────────────────────────────────────────────── */
 .notif-list { display: flex; flex-direction: column; gap: 12px; }

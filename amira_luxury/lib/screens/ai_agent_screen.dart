@@ -46,6 +46,12 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   String? _conversationId;
   bool _sending = false;
   bool _agentEnabled = true;
+  // Human-intervention state: once an admin takes over, the AI is paused and
+  // it's just the customer and the Amira team.
+  bool _intervened = false;
+  StreamSubscription? _convoSub;
+  StreamSubscription? _messagesSub;
+  final Set<String> _seenAdminMsgIds = {};
   List<String> _suggestions = [];
   List<Product> _catalog = [];
   String? _pendingProductId;
@@ -229,7 +235,8 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
       if (overrideText == null) _textController.clear();
       _pickedImage = null;
       _uploadedImageUrl = null;
-      _sending = true;
+      // No AI typing indicator while a human is handling the thread.
+      _sending = !_intervened;
     });
     _scrollToBottom();
 
@@ -243,12 +250,22 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
         imageUrl: imageUrl,
       );
       if (!mounted) return;
+      final newId = res.conversationId ?? _conversationId;
       setState(() {
-        _conversationId = res.conversationId ?? _conversationId;
-        _messages.add({'text': res.reply, 'isUser': false, 'animate': true});
+        _conversationId = newId;
+        // In human mode the agent doesn't reply — the specialist's messages
+        // arrive over the live listener instead, so don't add an empty bubble.
+        if (!_intervened && res.reply.isNotEmpty) {
+          _messages.add({'text': res.reply, 'isUser': false, 'animate': true});
+        }
         _sending = false;
         _pendingProductId = null;
       });
+      // Begin watching the thread once it exists, so admin replies and the
+      // intervention banner appear live.
+      if (newId != null && _messagesSub == null) {
+        _subscribeToThread(newId);
+      }
       _scrollToBottom();
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -397,11 +414,53 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
   @override
   void dispose() {
     _shell?.removeListener(_onShellChange);
+    _convoSub?.cancel();
+    _messagesSub?.cancel();
     _textController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
     _borderAnimationController?.dispose();
     super.dispose();
+  }
+
+  // Watches the live thread once it exists: the conversation doc (for the
+  // intervention/`mode` flag) and the messages subcollection (to surface the
+  // Amira team's replies, which don't return through the chat round-trip).
+  void _subscribeToThread(String conversationId) {
+    _convoSub?.cancel();
+    _messagesSub?.cancel();
+    _convoSub =
+        AgentService.instance.watchConversation(conversationId).listen((doc) {
+      if (!mounted) return;
+      final mode = (doc.data()?['mode'] as String?) ?? 'agent';
+      final human = mode == 'human';
+      if (human != _intervened) {
+        setState(() {
+          _intervened = human;
+          if (human) _sending = false; // no AI is going to answer
+        });
+      }
+    });
+    _messagesSub =
+        AgentService.instance.watchMessages(conversationId).listen((snap) {
+      if (!mounted) return;
+      final incoming = <Map<String, dynamic>>[];
+      for (final d in snap.docs) {
+        final data = d.data();
+        if (data['from'] == 'admin' && !_seenAdminMsgIds.contains(d.id)) {
+          _seenAdminMsgIds.add(d.id);
+          incoming.add({
+            'text': (data['text'] as String?) ?? '',
+            'isUser': false,
+            'isAdmin': true,
+          });
+        }
+      }
+      if (incoming.isNotEmpty) {
+        setState(() => _messages.addAll(incoming));
+        _scrollToBottom();
+      }
+    });
   }
 
   void _scrollToBottom() {
@@ -478,6 +537,39 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                   ),
                 ),
 
+                // Intervention banner — a specialist has taken over the thread.
+                if (_intervened)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _lightGold,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _gold.withOpacity(0.45)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Iconsax.user, color: _gold, size: 16),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'An Amira specialist has joined the conversation',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: _dark.withOpacity(0.8),
+                              fontFamily: 'Plus Jakarta Sans',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // Chat messages
                 Expanded(
                   child: ListView.builder(
@@ -490,6 +582,7 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                       }
                       final msg = _messages[i];
                       final isUser = msg['isUser'] as bool;
+                      final isAdmin = msg['isAdmin'] == true;
                       final text = msg['text'] as String;
                       if (!isUser && msg['animate'] == true) {
                         return _StreamingAgentBubble(
@@ -505,8 +598,10 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
                       return _MessageBubble(
                         text: text,
                         isUser: isUser,
+                        isAdmin: isAdmin,
                         imageUrl: msg['imageUrl'] as String?,
-                        linkedProducts: isUser ? const [] : _linkedProducts(text),
+                        linkedProducts:
+                            (isUser || isAdmin) ? const [] : _linkedProducts(text),
                       );
                     },
                   ),
@@ -800,12 +895,14 @@ class _AIAgentScreenState extends State<AIAgentScreen> with SingleTickerProvider
 class _MessageBubble extends StatelessWidget {
   final String text;
   final bool isUser;
+  final bool isAdmin;
   final String? imageUrl;
   final List<Product> linkedProducts;
 
   const _MessageBubble({
     required this.text,
     required this.isUser,
+    this.isAdmin = false,
     this.imageUrl,
     this.linkedProducts = const [],
   });
@@ -823,12 +920,12 @@ class _MessageBubble extends StatelessWidget {
               height: 32,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: _gold.withOpacity(0.15),
+                color: isAdmin ? _gold : _gold.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Iconsax.message_text5,
-                color: _gold,
+                isAdmin ? Iconsax.user : Iconsax.message_text5,
+                color: isAdmin ? _white : _gold,
                 size: 16,
               ),
             ),
@@ -837,6 +934,20 @@ class _MessageBubble extends StatelessWidget {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
+                if (isAdmin)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4, bottom: 4),
+                    child: Text(
+                      'Amira Team',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _gold,
+                        letterSpacing: 0.3,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                    ),
+                  ),
                 if (imageUrl != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: text.isNotEmpty ? 8 : 0),
@@ -866,7 +977,7 @@ class _MessageBubble extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
-                      color: isUser ? _dark : _white,
+                      color: isUser ? _dark : (isAdmin ? _lightGold : _white),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Text(
