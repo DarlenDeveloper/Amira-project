@@ -74,10 +74,42 @@ export default function Conversations() {
 
   const conversations = data;
 
+  // Group threads by customer so the left column is a list of *users*, each
+  // expanding to show their conversations — instead of one chatty user
+  // flooding the list with rows.
+  const userGroups = useMemo(() => {
+    const map = new Map();
+    for (const c of conversations) {
+      const key = c.uid || c.id;
+      let g = map.get(key);
+      if (!g) {
+        const { name, contactLine } = resolveContact(c, userByUid);
+        g = { uid: key, name, contactLine, convos: [] };
+        map.set(key, g);
+      }
+      g.convos.push(c);
+    }
+    const groups = [...map.values()];
+    for (const g of groups) {
+      g.convos.sort(
+        (a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0),
+      );
+      g.lastAt = g.convos[0]?.updatedAt ?? null;
+      g.openCount = g.convos.filter((c) => (c.status || 'open') === 'open').length;
+    }
+    groups.sort((a, b) => (b.lastAt?.toMillis?.() ?? 0) - (a.lastAt?.toMillis?.() ?? 0));
+    return groups;
+  }, [conversations, userByUid]);
+
+  const [expandedUid, setExpandedUid] = useState(null);
   const [activeId, setActiveId] = useState(null);
-  useEffect(() => {
-    if (!activeId && conversations.length) setActiveId(conversations[0].id);
-  }, [conversations, activeId]);
+
+  // Expand / collapse a user. Selecting a conversation is a separate click on a
+  // sub-row, so nothing is auto-selected — the thread pane shows its empty
+  // state until you pick one.
+  const selectUser = (g) => {
+    setExpandedUid((cur) => (cur === g.uid ? null : g.uid));
+  };
 
   const active = conversations.find((c) => c.id === activeId);
   const activeContact = active ? resolveContact(active, userByUid) : null;
@@ -150,35 +182,65 @@ export default function Conversations() {
       <PageHeader
         eyebrow="AMIRA Agent"
         title="Conversations"
-        subtitle={`${conversations.length} threads · ${openCount} open`}
+        subtitle={`${userGroups.length} customers · ${conversations.length} threads · ${openCount} open`}
       />
 
       <div className="convo-layout">
         <div className="convo-list">
-          {conversations.map((c) => {
-            const { name, contactLine } = resolveContact(c, userByUid);
+          {userGroups.map((g) => {
+            const isOpen = g.uid === expandedUid;
             return (
-              <button
-                key={c.id}
-                type="button"
-                className={`convo-item${c.id === activeId ? ' convo-item--active' : ''}`}
-                onClick={() => setActiveId(c.id)}
-              >
-                <span className="avatar">{initials(name)}</span>
-                <span className="convo-meta">
-                  <span className="convo-top">
-                    <span className="cell-strong">{name}</span>
-                    <span className="convo-time">{formatDate(c.updatedAt)}</span>
+              <div key={g.uid} className="convo-user-group">
+                <button
+                  type="button"
+                  className={`convo-item convo-user${isOpen ? ' convo-user--open' : ''}`}
+                  onClick={() => selectUser(g)}
+                >
+                  <span className="avatar">{initials(g.name)}</span>
+                  <span className="convo-meta">
+                    <span className="convo-top">
+                      <span className="cell-strong">{g.name}</span>
+                      <span className="convo-time">{formatDate(g.lastAt)}</span>
+                    </span>
+                    <span className="convo-contact">{g.contactLine}</span>
+                    <span className="convo-preview">
+                      {g.convos.length} conversation{g.convos.length === 1 ? '' : 's'}
+                      {g.openCount ? ` · ${g.openCount} open` : ''}
+                    </span>
                   </span>
-                  <span className="convo-contact">{contactLine}</span>
-                  <span className="convo-preview">
-                    {c.lastMessage || 'No messages yet'}
-                    {c.productName ? ` · ${c.productName}` : ''}
-                  </span>
-                </span>
-              </button>
+                  <span className="convo-caret">{isOpen ? '▾' : '▸'}</span>
+                </button>
+
+                {isOpen && (
+                  <div className="convo-sublist">
+                    {g.convos.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`convo-subitem${c.id === activeId ? ' convo-subitem--active' : ''}`}
+                        onClick={() => setActiveId(c.id)}
+                      >
+                        <span className="convo-subtop">
+                          <span className="convo-subpreview">
+                            {c.lastMessage || 'No messages yet'}
+                          </span>
+                          <span className="convo-time">{formatDate(c.updatedAt)}</span>
+                        </span>
+                        <span className="convo-substatus">
+                          {c.productName ? `${c.productName} · ` : ''}
+                          {c.mode === 'human' ? 'intervened · ' : ''}
+                          {c.status || 'open'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
+          {userGroups.length === 0 && (
+            <p className="empty" style={{ padding: 24 }}>No conversations yet.</p>
+          )}
           {hasMore && !loading && (
             <button type="button" className="ghost-btn" onClick={loadMore} style={{ margin: 12 }}>
               Load more
