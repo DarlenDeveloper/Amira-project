@@ -1,0 +1,3 @@
+# Amira admin dashboard — block all crawlers from indexing anything.
+User-agent: *
+Disallow: /

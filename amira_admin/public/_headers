@@ -1,0 +1,4 @@
+# Send X-Robots-Tag on every response so crawlers never index the admin,
+# even for non-HTML assets or without rendering the page.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive
