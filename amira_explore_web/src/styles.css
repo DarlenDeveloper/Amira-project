@@ -234,20 +234,19 @@
 }
 .site-nav-top {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  gap: 22px;
-  padding: 8px clamp(20px, 4vw, 56px);
+  gap: 18px;
+  padding: 10px clamp(20px, 4vw, 56px) 4px;
   font-size: 12px;
   letter-spacing: 0.3px;
-  color: rgba(255, 255, 255, 0.85);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
 }
 .site-nav-main {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 14px clamp(20px, 4vw, 56px);
+  padding: 6px clamp(20px, 4vw, 56px) 16px;
 }
 .site-nav-logo {
   flex: 0 0 auto;
@@ -259,7 +258,7 @@
   cursor: pointer;
 }
 .site-nav-logo img {
-  height: 56px;
+  height: 100px;
   width: auto;
   display: block;
 }
@@ -277,7 +276,8 @@
   letter-spacing: 0.2px;
   transition: color 0.2s ease;
 }
-.site-nav-link:hover {
+.site-nav-link:hover,
+.site-nav-link--active {
   color: var(--gold);
 }
 .site-nav-cta {

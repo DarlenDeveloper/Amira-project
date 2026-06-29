@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 // Brand top navbar, overlaid on the hero — mirrors the Amira marketing site:
 // a slim utility row (contact + language), the AMIRA logo, centered nav links,
 // and a "Shop" call-to-action.
@@ -8,6 +10,8 @@
 const NAV_LINKS = ['Home', 'Shop', 'About', 'Services', 'Portfolio', 'Contact'];
 
 export default function Navbar() {
+  const [active, setActive] = useState('Home');
+
   const scrollToTop = () =>
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -19,6 +23,7 @@ export default function Navbar() {
 
   const onLink = (label) => (e) => {
     e.preventDefault();
+    setActive(label);
     if (label === 'Home') scrollToTop();
     else if (label === 'Shop') scrollToShop();
     // Other links: brand pages on the marketing site (wire when available).
@@ -38,7 +43,7 @@ export default function Navbar() {
           onClick={scrollToTop}
           aria-label="Amira Interior Hub — home"
         >
-          <img src="/images/amira-logo.jpeg" alt="Amira Interior Hub" />
+          <img src="/images/amira-logo.png" alt="Amira Interior Hub" />
         </button>
 
         <nav className="site-nav-links" aria-label="Primary">
@@ -46,7 +51,7 @@ export default function Navbar() {
             <a
               key={label}
               href="#"
-              className="site-nav-link"
+              className={`site-nav-link${active === label ? ' site-nav-link--active' : ''}`}
               onClick={onLink(label)}
             >
               {label}
