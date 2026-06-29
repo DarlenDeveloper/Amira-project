@@ -12,6 +12,7 @@ import NotificationsPanel from './components/NotificationsPanel.jsx';
 import { profileNeedsPhone } from './services/auth.js';
 import { watchProfile, displayName } from './services/profile.js';
 import { trackPageView } from './services/analytics.js';
+import Navbar from './components/Navbar.jsx';
 
 // Web shop home: hero, category strip, filter pills, the live product grid, a
 // product detail overlay, plus the cart drawer and auth/checkout modal.
@@ -120,6 +121,7 @@ export default function ExplorePage() {
 
   return (
     <div className="explore">
+      <Navbar />
       <HeroSection />
 
       <div className="explore-inner">

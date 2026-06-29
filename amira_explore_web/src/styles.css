@@ -222,6 +222,87 @@
   color: var(--gold);
 }
 
+/* ── Brand top navbar (overlaid on the hero) ──────────────────────────────── */
+.explore { position: relative; }
+.site-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  color: var(--white);
+}
+.site-nav-top {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 22px;
+  padding: 8px clamp(20px, 4vw, 56px);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.site-nav-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px clamp(20px, 4vw, 56px);
+}
+.site-nav-logo {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.site-nav-logo img {
+  height: 56px;
+  width: auto;
+  display: block;
+}
+.site-nav-links {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 2.4vw, 36px);
+}
+.site-nav-link {
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: color 0.2s ease;
+}
+.site-nav-link:hover {
+  color: var(--gold);
+}
+.site-nav-cta {
+  flex: 0 0 auto;
+  background: var(--white);
+  color: var(--dark);
+  border: none;
+  border-radius: 999px;
+  padding: 12px 30px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.site-nav-cta:hover {
+  background: var(--gold);
+  color: var(--white);
+  transform: translateY(-1px);
+}
+@media (max-width: 860px) {
+  .site-nav-links {
+    display: none;
+  }
+}
+
 /* ── Hero ───────────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
