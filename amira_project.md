@@ -16,7 +16,7 @@ Target: Premium, warm, and visually immersive experience that reflects the Amira
 
 ---
 
-## Product Categories
+## Product Categories.
 
 Amira Interiors specializes in 11 product categories. These are the client's
 core specialities and drive the catalog, Explore gallery, and Home portfolio.
