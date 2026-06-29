@@ -26,10 +26,27 @@ export default function ProductDetail({ data, related = [], onClose, onSelect, o
     [data],
   );
 
-  const relatedItems = useMemo(
-    () => related.filter((m) => m.id !== data.id).slice(0, 4),
-    [related, data],
-  );
+  const relatedItems = useMemo(() => {
+    // Candidates: everything except the current product and out-of-stock items.
+    const pool = related.filter((m) => m.id !== data.id && !m.outOfStock);
+
+    // Lightweight shuffle so the row isn't identical on every visit.
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    // Prefer same-category items, then fill remaining slots with others.
+    const sameCategory = shuffle(pool.filter((m) => m.category && m.category === data.category));
+    const others = shuffle(pool.filter((m) => m.category !== data.category));
+    return [...sameCategory, ...others].slice(0, 4);
+    // data.id pins the memo to the current product; reshuffles on navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [related, data.id, data.category]);
 
   useEffect(() => {
     setQty(1);
