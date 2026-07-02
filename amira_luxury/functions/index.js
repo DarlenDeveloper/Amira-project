@@ -63,6 +63,36 @@ function assertUnderRenderLimit(count) {
   }
 }
 
+// Builds the image-model instruction. Applies EVERY reference item (not just
+// one surface), and handles both flat surface finishes and physical products
+// such as lights or blinds so multi-material renders include all selections.
+function buildRenderInstruction(materialNames, prompt) {
+  const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
+  return (
+    'Use the FIRST image as the exact base scene: a real photograph of the ' +
+    "user's room. Apply ALL of the reference items" + names + ' shown in the ' +
+    'other image(s) into this one room in a single cohesive result — do not ' +
+    'skip any of them. For each reference, decide what it is and place it ' +
+    'correctly:\n' +
+    '- Flat surface materials (wall panels, marble, stone, wallpaper, tiles, ' +
+    'flooring, artificial grass and similar) are texture and colour swatches: ' +
+    'apply them as a realistic finish on the surface they naturally belong to ' +
+    '(wall finishes lie flat on the relevant wall, flooring on the floor). Do ' +
+    'NOT insert these as objects, framed pictures, panels, partitions or ' +
+    'freestanding pieces, and never lay a wall material across the floor or ' +
+    'ceiling.\n' +
+    '- Physical products (lights and light fixtures, blinds, furniture and ' +
+    'similar) are real objects: install each one naturally in the room at a ' +
+    'realistic position, scale and orientation (for example a pendant light ' +
+    'hangs from the ceiling, blinds mount on the window).\n' +
+    'Keep the rest of the room identical to the original photograph — the same ' +
+    'camera angle, framing and proportions, and every surface, fixture, ' +
+    'furniture and decor item that is not being changed. The result must be ' +
+    'photorealistic and lit to match the original scene.' +
+    (prompt ? ' User preferences: ' + prompt : '')
+  );
+}
+
 async function fetchInlineImage(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
@@ -373,24 +403,7 @@ export const generateRender = onCall(
         }
       }
 
-      const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
-      const instruction =
-        'Use the FIRST image as the exact base scene: a real photograph of the ' +
-        'user\'s room. Re-finish the room by applying the material(s)' + names +
-        ' from the reference image(s) as a realistic surface finish. Apply each ' +
-        'material to the surface it naturally belongs to — wall finishes ' +
-        '(panels, marble, stone and similar) lie flat on the relevant wall, ' +
-        'flooring goes on the floor, blinds on the window, and so on. Treat the ' +
-        'reference images strictly as texture and colour swatches: do not insert ' +
-        'them as objects, framed pictures, panels, partitions or freestanding ' +
-        'pieces, and never lay a wall material across the floor or ceiling. ' +
-        'Change only that one surface\'s finish. Keep everything else identical ' +
-        'to the original photograph — the same camera angle, framing and ' +
-        'proportions, and the same floor, ceiling, windows, trim, doors, other ' +
-        'walls, furniture, decor and lighting. The result must look like the ' +
-        'same photo of the same room with only that surface refinished, ' +
-        'photorealistic and lit to match.' +
-        (prompt ? ' User preferences: ' + prompt : '');
+      const instruction = buildRenderInstruction(materialNames, prompt);
 
       const parts = [{ text: instruction }, room, ...products];
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
@@ -469,24 +482,7 @@ async function runLegacyGenerateRender(uid, {
         console.warn('legacy skip reference image:', e.message);
       }
     }
-    const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
-    const instruction =
-      'Use the FIRST image as the exact base scene: a real photograph of the ' +
-      'user\'s room. Re-finish the room by applying the material(s)' + names +
-      ' from the reference image(s) as a realistic surface finish. Apply each ' +
-      'material to the surface it naturally belongs to — wall finishes ' +
-      '(panels, marble, stone and similar) lie flat on the relevant wall, ' +
-      'flooring goes on the floor, blinds on the window, and so on. Treat the ' +
-      'reference images strictly as texture and colour swatches: do not insert ' +
-      'them as objects, framed pictures, panels, partitions or freestanding ' +
-      'pieces, and never lay a wall material across the floor or ceiling. ' +
-      'Change only that one surface\'s finish. Keep everything else identical ' +
-      'to the original photograph — the same camera angle, framing and ' +
-      'proportions, and the same floor, ceiling, windows, trim, doors, other ' +
-      'walls, furniture, decor and lighting. The result must look like the ' +
-      'same photo of the same room with only that surface refinished, ' +
-      'photorealistic and lit to match.' +
-      (prompt ? ' User preferences: ' + prompt : '');
+    const instruction = buildRenderInstruction(materialNames, prompt);
     const parts = [{ text: instruction }, room, ...products];
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
     const response = await ai.models.generateContent({
