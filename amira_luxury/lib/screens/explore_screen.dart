@@ -29,12 +29,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // catalogue's categories (see build), not a hardcoded list.
   String _selectedCategory = 'ALL';
 
+  // Client-side pagination: reveal the grid a page at a time so only the cards
+  // (and their images) near the viewport are built. More pages are appended as
+  // the user scrolls, which keeps first paint fast and images loading in order.
+  static const int _pageSize = 8;
+  int _visibleCount = _pageSize;
+  int _filteredTotal = 0;
+  final ScrollController _gridController = ScrollController();
+
   // Coachmark anchors + trigger state.
   final GlobalKey _tipCartKey = GlobalKey();
   final GlobalKey _tipFilterKey = GlobalKey();
   final GlobalKey _tipGridKey = GlobalKey();
   AppShellController? _shell;
   bool _coachTriggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gridController.addListener(_onGridScroll);
+  }
+
+  // Reveal the next page once the user nears the bottom of the grid.
+  void _onGridScroll() {
+    if (!_gridController.hasClients) return;
+    final pos = _gridController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 400) _revealMore();
+  }
+
+  void _revealMore() {
+    if (_visibleCount >= _filteredTotal) return;
+    setState(() {
+      _visibleCount =
+          (_visibleCount + _pageSize).clamp(0, _filteredTotal).toInt();
+    });
+  }
+
+  // Start each category back at page one (and scroll to the top).
+  void _selectCategory(String label) {
+    setState(() {
+      _selectedCategory = label;
+      _visibleCount = _pageSize;
+    });
+    if (_gridController.hasClients) _gridController.jumpTo(0);
+  }
 
   @override
   void didChangeDependencies() {
@@ -55,6 +93,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     _shell?.removeListener(_onShell);
+    _gridController.dispose();
     super.dispose();
   }
 
@@ -173,8 +212,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           final label = categories[i];
                           final isActive = label == selected;
                           return GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedCategory = label),
+                            onTap: () => _selectCategory(label),
                             child: Container(
                               margin: const EdgeInsets.only(right: 12),
                               padding: const EdgeInsets.symmetric(
@@ -231,29 +269,64 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     ),
                                   );
                                 }
-                                return GridView.builder(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 22,
-                                    childAspectRatio: 0.66,
-                                  ),
-                                  itemCount: filtered.length,
-                                  itemBuilder: (_, i) {
-                                    final card = _MaterialCard(
-                                      product: filtered[i],
-                                      isFavourite:
-                                          favourites.contains(filtered[i].id),
-                                    );
-                                    // Anchor the first card for the coachmark.
-                                    return i == 0
-                                        ? KeyedSubtree(
-                                            key: _tipGridKey, child: card)
-                                        : card;
-                                  },
+                                _filteredTotal = filtered.length;
+                                final visible = _visibleCount
+                                    .clamp(0, filtered.length)
+                                    .toInt();
+                                final hasMore = visible < filtered.length;
+                                return CustomScrollView(
+                                  controller: _gridController,
+                                  // Bound how far off-screen we pre-build so
+                                  // images near the viewport load first.
+                                  cacheExtent: 600,
+                                  slivers: [
+                                    SliverPadding(
+                                      padding: EdgeInsets.fromLTRB(
+                                          20, 0, 20, hasMore ? 8 : 120),
+                                      sliver: SliverGrid(
+                                        gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 2,
+                                          crossAxisSpacing: 16,
+                                          mainAxisSpacing: 22,
+                                          childAspectRatio: 0.66,
+                                        ),
+                                        delegate: SliverChildBuilderDelegate(
+                                          (_, i) {
+                                            final card = _MaterialCard(
+                                              product: filtered[i],
+                                              isFavourite: favourites
+                                                  .contains(filtered[i].id),
+                                            );
+                                            // Anchor the first card for the coachmark.
+                                            return i == 0
+                                                ? KeyedSubtree(
+                                                    key: _tipGridKey,
+                                                    child: card)
+                                                : card;
+                                          },
+                                          childCount: visible,
+                                        ),
+                                      ),
+                                    ),
+                                    if (hasMore)
+                                      const SliverToBoxAdapter(
+                                        child: Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                              20, 12, 20, 120),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 26,
+                                              height: 26,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.4,
+                                                color: _gold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 );
                               },
                             ),
