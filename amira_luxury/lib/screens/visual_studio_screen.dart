@@ -244,20 +244,29 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
 
   Future<void> _upload() async {
     final picked = _picked;
-    if (picked == null || _uploading) return;
+    // The room photo is uploaded exactly once per picked image. Bail if there's
+    // nothing to upload, an upload is already running, or this photo is already
+    // uploaded — tagging materials or re-generating must never re-upload.
+    if (picked == null || _uploading || _uploadedUrl != null) return;
+
     final token = _shell?.sessionToken ?? 0;
+    bool stale() =>
+        !mounted || _disposed || (_shell?.sessionToken ?? 0) != token;
+
     setState(() {
       _uploading = true;
       _progress = 0;
     });
     try {
+      // A fresh session per upload attempt keeps us safe against the
+      // create-only Storage rule: each attempt writes room.jpg to its own
+      // session folder, so a retry never collides with an existing object.
+      // Material selection + prompt are decoupled and re-sent at generate time.
       final renderId = await RenderService.instance.startSession(
-        productIds: _selected.map((p) => p.id).toList(),
-        materialNames: _selected.map((p) => p.name).toList(),
         source: _source,
         prompt: _descCtrl.text.trim(),
       );
-      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+      if (stale()) return;
 
       final url = await RenderService.instance.uploadRoomImage(
         renderId,
@@ -266,22 +275,23 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
           if (mounted && !_disposed) setState(() => _progress = p);
         },
       );
-      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+      if (stale()) return;
 
       await RenderService.instance.registerRoomUpload(renderId, url);
-      if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
+      if (stale()) return;
 
       setState(() {
         _renderId = renderId;
         _uploadedUrl = url;
-        _uploading = false;
         _progress = 1;
       });
       _snack('Room photo uploaded');
     } catch (_) {
-      if (!mounted || _disposed) return;
-      setState(() => _uploading = false);
-      _snack('Upload failed. Please try again.');
+      if (mounted && !_disposed) _snack('Upload failed. Please try again.');
+    } finally {
+      // Always clear the in-flight flag so the UI can't get stuck on
+      // "Uploading…" or be tricked into firing a second upload.
+      if (mounted && !_disposed) setState(() => _uploading = false);
     }
   }
 
