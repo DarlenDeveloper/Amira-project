@@ -22,6 +22,9 @@ const _lightGrey = Color(0xFFE8E8E8);
 const _gold = Color(0xFFC4A464);
 const _lightGold = Color(0xFFF5EFE3);
 
+// Maximum number of materials/products that can be tagged onto a single render.
+const _maxMaterials = 3;
+
 class VisualStudioScreen extends StatefulWidget {
   const VisualStudioScreen({super.key});
 
@@ -143,11 +146,11 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     setState(() {
       _appliedIntentToken = intent.token;
       _source = intent.source;
-      // Single-material selection: the incoming product replaces any current one.
-      if (intent.products.isNotEmpty) {
-        _selected
-          ..clear()
-          ..add(intent.products.first);
+      // Add the incoming product to the selection (up to the max), without
+      // dropping anything the user already picked.
+      for (final p in intent.products) {
+        if (_selected.length >= _maxMaterials) break;
+        if (!_selected.any((s) => s.id == p.id)) _selected.add(p);
       }
     });
   }
@@ -458,10 +461,13 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                       final m = available[i];
                       return GestureDetector(
                         onTap: () {
-                          // Single-material selection: replace any current pick.
-                          setState(() => _selected
-                            ..clear()
-                            ..add(m));
+                          // Multi-select up to the max. Guard so the user can't
+                          // exceed the per-render cap.
+                          if (_selected.length >= _maxMaterials) {
+                            _snack('You can add up to $_maxMaterials materials per render.');
+                            return;
+                          }
+                          setState(() => _selected.add(m));
                           Navigator.of(ctx).pop();
                         },
                         behavior: HitTestBehavior.opaque,
@@ -935,21 +941,22 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                         product: _selected[i],
                         onRemove: () => _removeMaterial(i),
                       ),
-                    // Add tile
-                    GestureDetector(
-                      onTap: _openMaterialPicker,
-                      child: Container(
-                        width: 88,
-                        height: 88,
-                        margin: const EdgeInsets.only(top: 8),
-                        decoration: BoxDecoration(
-                          color: _white,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: _lightGrey, width: 1.5),
+                    // Add tile — hidden once the per-render cap is reached.
+                    if (_selected.length < _maxMaterials)
+                      GestureDetector(
+                        onTap: _openMaterialPicker,
+                        child: Container(
+                          width: 88,
+                          height: 88,
+                          margin: const EdgeInsets.only(top: 8),
+                          decoration: BoxDecoration(
+                            color: _white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: _lightGrey, width: 1.5),
+                          ),
+                          child: const Icon(Icons.add, color: _gold, size: 30),
                         ),
-                        child: const Icon(Icons.add, color: _gold, size: 30),
                       ),
-                    ),
                   ],
                 ),
               ),
