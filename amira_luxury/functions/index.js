@@ -21,7 +21,7 @@ initializeApp();
 
 const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
 const RENDER_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 const RENDER_RATE_LIMIT = 0; // renders allowed per user per rolling hour (0 = disabled)
 const RENDER_RATE_WINDOW_MS = 60 * 60 * 1000; // …per rolling hour
@@ -63,33 +63,55 @@ function assertUnderRenderLimit(count) {
   }
 }
 
-// Builds the image-model instruction. Applies EVERY reference item (not just
-// one surface), and handles both flat surface finishes and physical products
-// such as lights or blinds so multi-material renders include all selections.
+// Builds the image-model instruction. Each reference material is labeled
+// individually so the model knows exactly what each image represents and where
+// to apply it. This dramatically improves output quality vs dumping unlabeled
+// reference images.
 function buildRenderInstruction(materialNames, prompt) {
-  const names = materialNames.length ? ` (${materialNames.join(', ')})` : '';
+  // Build per-image labels so the model can map each reference to a surface.
+  let materialLabels = '';
+  if (materialNames.length) {
+    const labels = materialNames.map(
+      (name, i) => `  Image ${i + 2}: "${name}"`
+    );
+    materialLabels = '\n\nReference images provided:\n  Image 1: The room photo (base scene)\n' + labels.join('\n');
+  }
+
   return (
-    'Use the FIRST image as the exact base scene: a real photograph of the ' +
-    "user's room. Apply ALL of the reference items" + names + ' shown in the ' +
-    'other image(s) into this one room in a single cohesive result — do not ' +
-    'skip any of them. For each reference, decide what it is and place it ' +
-    'correctly:\n' +
-    '- Flat surface materials (wall panels, marble, stone, wallpaper, tiles, ' +
-    'flooring, artificial grass and similar) are texture and colour swatches: ' +
-    'apply them as a realistic finish on the surface they naturally belong to ' +
-    '(wall finishes lie flat on the relevant wall, flooring on the floor). Do ' +
-    'NOT insert these as objects, framed pictures, panels, partitions or ' +
-    'freestanding pieces, and never lay a wall material across the floor or ' +
-    'ceiling.\n' +
-    '- Physical products (lights and light fixtures, blinds, furniture and ' +
-    'similar) are real objects: install each one naturally in the room at a ' +
-    'realistic position, scale and orientation (for example a pendant light ' +
-    'hangs from the ceiling, blinds mount on the window).\n' +
-    'Keep the rest of the room identical to the original photograph — the same ' +
-    'camera angle, framing and proportions, and every surface, fixture, ' +
-    'furniture and decor item that is not being changed. The result must be ' +
-    'photorealistic and lit to match the original scene.' +
-    (prompt ? ' User preferences: ' + prompt : '')
+    'You are an award-winning luxury interior designer creating a premium ' +
+    'design visualization for a client. Edit the room in Image 1 by applying ' +
+    'the materials/products shown in the reference images — but go beyond ' +
+    'simply placing them. Enhance the overall space so it feels like a ' +
+    'professionally designed, cohesive interior. Output a single photorealistic ' +
+    'image of the redesigned room.\n\n' +
+    'RULES:\n' +
+    '1. PRESERVE the exact camera angle, perspective, room layout, and ' +
+    'dimensions.\n' +
+    '2. For surface materials (wall panels, marble sheets, stone, tiles, ' +
+    'flooring, artificial grass, wallpaper): apply as a seamless, realistic ' +
+    'finish on the appropriate surface. Wall materials go on walls. Floor ' +
+    'materials go on floors. Do NOT place them as framed pictures, standalone ' +
+    'panels, or objects.\n' +
+    '3. For physical products (lights, blinds, furniture): install them ' +
+    'naturally at correct scale and position (lights on ceiling/wall, blinds ' +
+    'on windows).\n' +
+    '4. ENHANCE the scene beyond just placing materials:\n' +
+    '   - Adjust ambient lighting to complement the new finishes (warmer tones ' +
+    'for wood/gold materials, cooler for marble/stone).\n' +
+    '   - Add subtle, tasteful styling touches that a professional designer ' +
+    'would include — refined shadow play, gentle light reflections on new ' +
+    'surfaces, improved color harmony across the room.\n' +
+    '   - Make existing furniture and decor feel intentionally coordinated with ' +
+    'the new finishes rather than mismatched.\n' +
+    '   - The final result should look like the room was professionally ' +
+    'redesigned as a whole, not like materials were copy-pasted in.\n' +
+    '5. The output must look like a real photograph taken by a professional ' +
+    'interior photographer for a luxury design magazine — not a 3D render, ' +
+    'collage, or illustration.\n' +
+    '6. Do NOT add any text, watermarks, labels, or borders to the image.\n' +
+    '7. Match the resolution and aspect ratio of the original room photo.' +
+    materialLabels +
+    (prompt ? '\n\nAdditional design direction: ' + prompt : '')
   );
 }
 
@@ -405,12 +427,22 @@ export const generateRender = onCall(
 
       const instruction = buildRenderInstruction(materialNames, prompt);
 
-      const parts = [{ text: instruction }, room, ...products];
+      // Interleave labeled text with each reference image so the model
+      // knows exactly what each image represents.
+      const parts = [{ text: instruction }, room];
+      for (let i = 0; i < products.length; i++) {
+        const label = materialNames[i]
+          ? `Reference material ${i + 1}: "${materialNames[i]}"`
+          : `Reference material ${i + 1}`;
+        parts.push({ text: label });
+        parts.push(products[i]);
+      }
+
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
       const response = await ai.models.generateContent({
         model: IMAGE_MODEL,
         contents: [{ role: 'user', parts }],
-        config: { temperature: 0.1 },
+        config: { temperature: 0.2 },
       });
 
       const cand = response?.candidates?.[0];
@@ -483,12 +515,19 @@ async function runLegacyGenerateRender(uid, {
       }
     }
     const instruction = buildRenderInstruction(materialNames, prompt);
-    const parts = [{ text: instruction }, room, ...products];
+    const parts = [{ text: instruction }, room];
+    for (let i = 0; i < products.length; i++) {
+      const label = materialNames[i]
+        ? `Reference material ${i + 1}: "${materialNames[i]}"`
+        : `Reference material ${i + 1}`;
+      parts.push({ text: label });
+      parts.push(products[i]);
+    }
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY.value() });
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts }],
-      config: { temperature: 0.1 },
+      config: { temperature: 0.2 },
     });
     const imgPart = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
     if (!imgPart) {
