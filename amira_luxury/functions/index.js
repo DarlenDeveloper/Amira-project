@@ -63,11 +63,65 @@ function assertUnderRenderLimit(count) {
   }
 }
 
-// Builds the image-model instruction. Each reference material is labeled
-// individually so the model knows exactly what each image represents and where
-// to apply it. This dramatically improves output quality vs dumping unlabeled
-// reference images.
-function buildRenderInstruction(materialNames, prompt) {
+// ── Product-to-surface categorization ─────────────────────────────────────────
+// Maps a product name to its target surface so the prompt can explicitly tell
+// the model where each material goes. Default is WALLS (most Amira products are
+// wall finishes).
+const SURFACE_KEYWORDS = {
+  'WALLS': [
+    'marble', 'wall panel', 'bamboo', 'wpc', 'pvc', 'soft stone', 'pu stone',
+    'stone sheet', 'wallpaper', 'cladding', 'veneer', 'block board', 'charcoal',
+    'slate', 'wood panel', 'fluted', 'louver', 'accent wall',
+  ],
+  'WINDOWS': [
+    'blind', 'curtain', 'shutter', 'drape', 'roller', 'zebra', 'venetian',
+  ],
+  'CEILING': [
+    'light', 'chandelier', 'pendant', 'lamp', 'spotlight', 'sconce',
+    'downlight', 'ceiling', 'led strip',
+  ],
+  'FLOOR': [
+    'floor', 'tile', 'carpet', 'grass', 'vinyl', 'plank', 'rug', 'screed',
+    'laminate', 'epoxy',
+  ],
+  'TRIM': [
+    'steel profile', 'metal trim', 'frame', 'moulding', 'edge strip',
+    'skirting', 'corner', 'profile',
+  ],
+};
+
+function categorizeProduct(name) {
+  const lower = name.toLowerCase();
+  for (const [surface, keywords] of Object.entries(SURFACE_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (lower.includes(kw)) return surface;
+    }
+  }
+  return 'WALLS'; // safe default — most Amira products are wall finishes
+}
+
+function buildSurfaceAssignments(materialNames) {
+  if (!materialNames.length) return '';
+  const lines = materialNames.map((name) => {
+    const surface = categorizeProduct(name);
+    const target = surface === 'WALLS' ? 'WALLS only'
+      : surface === 'WINDOWS' ? 'WINDOWS only'
+      : surface === 'CEILING' ? 'CEILING/WALL fixture'
+      : surface === 'FLOOR' ? 'FLOOR only'
+      : 'TRIM/ACCENT edges';
+    return `- "${name}" → apply to ${target}`;
+  });
+  return '\n\nSURFACE ASSIGNMENTS:\n' + lines.join('\n');
+}
+
+function hasFloorProduct(materialNames) {
+  return materialNames.some((name) => categorizeProduct(name) === 'FLOOR');
+}
+
+// Builds the image-model instruction based on mode ('original' | 'enhance').
+// Each reference material is labeled individually so the model knows exactly
+// what each image represents and where to apply it.
+function buildRenderInstruction(materialNames, mode, prompt) {
   // Build per-image labels so the model can map each reference to a surface.
   let materialLabels = '';
   if (materialNames.length) {
@@ -77,39 +131,78 @@ function buildRenderInstruction(materialNames, prompt) {
     materialLabels = '\n\nReference images provided:\n  Image 1: The room photo (base scene)\n' + labels.join('\n');
   }
 
+  const surfaceAssignments = buildSurfaceAssignments(materialNames);
+  const floorProtection = hasFloorProduct(materialNames)
+    ? 'Apply the flooring material to the floor surface only.'
+    : 'The floor is already finished — do NOT modify it in any way.';
+
+  // ── Shared hard rules (both modes) ──
+  const hardRules =
+    'HARD RULES (never break these):\n' +
+    '1. CAMERA: The output must match the EXACT camera position, lens, focal ' +
+    'length, field of view, perspective, and distortion of Image 1. No angle ' +
+    'change, no zoom, no crop, no shift whatsoever.\n' +
+    '2. PEOPLE: Do not add, remove, duplicate, or alter any person. Every ' +
+    'person must remain identical — same count, same position, same clothing, ' +
+    'skin tone, hair, posture, and facial features. Do not modify people in ' +
+    'any way.\n' +
+    '3. UNTOUCHED SURFACES: Any surface NOT listed in the surface assignments ' +
+    'must remain pixel-perfect unchanged. Do not modify its color, texture, ' +
+    'size, or material.\n' +
+    '4. FLOOR PROTECTION: ' + floorProtection + '\n' +
+    '5. NO BLEED: Materials must not bleed onto adjacent surfaces. Wall ' +
+    'materials stay on walls. Window products stay on windows. Nothing ' +
+    'spreads to furniture, doors, door frames, dividers, desks, or floors.\n' +
+    '6. OBJECTS: Do not add, remove, reposition, resize, or recolor any ' +
+    'furniture, fixture, divider, or object not being directly replaced by a ' +
+    'listed product.\n' +
+    '7. INSTALLATION REALISM: Surface materials (panels, marble, stone, ' +
+    'tiles) must appear as seamless, properly installed finishes — not as ' +
+    'framed pictures, floating panels, or stickers. Physical products ' +
+    '(blinds, lights) must be installed at correct scale and natural position.\n' +
+    '8. OUTPUT: No text, watermarks, labels, or borders. Match the original ' +
+    'resolution and aspect ratio.';
+
+  if (mode === 'standard') {
+    return (
+      'You are a professional interior installer. Apply the specified ' +
+      'materials/products into the room in Image 1 exactly as a real ' +
+      'installer would — nothing more, nothing less. Output a single ' +
+      'photorealistic image.\n' +
+      surfaceAssignments + '\n\n' +
+      hardRules +
+      '\n\nThe output must look like a real photograph. Maintain the exact ' +
+      'same lighting conditions as the original — do not adjust ambient ' +
+      'light, color temperature, or shadows beyond what the new materials ' +
+      'would physically produce.' +
+      materialLabels +
+      (prompt ? '\n\nAdditional design direction: ' + prompt : '')
+    );
+  }
+
+  // ── Enhance mode (default) — current creative prompt + hard rules ──
   return (
     'You are an award-winning luxury interior designer creating a premium ' +
-    'design visualization for a client. Edit the room in Image 1 by applying ' +
-    'the materials/products shown in the reference images — but go beyond ' +
-    'simply placing them. Enhance the overall space so it feels like a ' +
-    'professionally designed, cohesive interior. Output a single photorealistic ' +
-    'image of the redesigned room.\n\n' +
-    'RULES:\n' +
-    '1. PRESERVE the exact camera angle, perspective, room layout, and ' +
-    'dimensions.\n' +
-    '2. For surface materials (wall panels, marble sheets, stone, tiles, ' +
-    'flooring, artificial grass, wallpaper): apply as a seamless, realistic ' +
-    'finish on the appropriate surface. Wall materials go on walls. Floor ' +
-    'materials go on floors. Do NOT place them as framed pictures, standalone ' +
-    'panels, or objects.\n' +
-    '3. For physical products (lights, blinds, furniture): install them ' +
-    'naturally at correct scale and position (lights on ceiling/wall, blinds ' +
-    'on windows).\n' +
-    '4. ENHANCE the scene beyond just placing materials:\n' +
-    '   - Adjust ambient lighting to complement the new finishes (warmer tones ' +
+    'design visualization for a client. Apply the specified materials/' +
+    'products into the room in Image 1 and enhance the scene so the new ' +
+    'finishes look professionally installed and cohesive. Output a single ' +
+    'photorealistic image.\n' +
+    surfaceAssignments + '\n\n' +
+    hardRules +
+    '\n\nENHANCEMENT ALLOWANCES:\n' +
+    '- Adjust ambient lighting to complement the new finishes (warmer tones ' +
     'for wood/gold materials, cooler for marble/stone).\n' +
-    '   - Add subtle, tasteful styling touches that a professional designer ' +
-    'would include — refined shadow play, gentle light reflections on new ' +
-    'surfaces, improved color harmony across the room.\n' +
-    '   - Make existing furniture and decor feel intentionally coordinated with ' +
-    'the new finishes rather than mismatched.\n' +
-    '   - The final result should look like the room was professionally ' +
-    'redesigned as a whole, not like materials were copy-pasted in.\n' +
-    '5. The output must look like a real photograph taken by a professional ' +
-    'interior photographer for a luxury design magazine — not a 3D render, ' +
-    'collage, or illustration.\n' +
-    '6. Do NOT add any text, watermarks, labels, or borders to the image.\n' +
-    '7. Match the resolution and aspect ratio of the original room photo.' +
+    '- Add realistic shadows and reflections that the new surfaces would ' +
+    'naturally produce (marble reflects light, wood absorbs it).\n' +
+    '- Improve visual harmony of how new materials meet existing edges — ' +
+    'seamless transitions, natural shadow lines.\n' +
+    '- The new materials should look like they have been installed for years, ' +
+    'not freshly pasted in.\n' +
+    '- Do NOT change unchanged objects to "match" the new materials. ' +
+    'Enhancement applies only to how the new materials interact with light ' +
+    'and sit in the scene.\n\n' +
+    'The output must look like a professional interior photograph for a ' +
+    'luxury design magazine — not a 3D render, collage, or illustration.' +
     materialLabels +
     (prompt ? '\n\nAdditional design direction: ' + prompt : '')
   );
@@ -181,6 +274,7 @@ export const startRenderSession = onCall(
       materialNames = [],
       source = 'tab',
       prompt = '',
+      mode = 'enhance',
     } = request.data || {};
 
     const db = getFirestore();
@@ -199,6 +293,7 @@ export const startRenderSession = onCall(
       productIds: Array.isArray(productIds) ? productIds.slice(0, 5) : [],
       materialNames: Array.isArray(materialNames) ? materialNames.slice(0, 5) : [],
       prompt: String(prompt || ''),
+      mode: String(mode || 'enhance'),
       model: IMAGE_MODEL,
       expiresAt,
       createdAt: FieldValue.serverTimestamp(),
@@ -348,17 +443,21 @@ export const generateRender = onCall(
       : null;
     const reqPrompt =
       typeof request.data?.prompt === 'string' ? request.data.prompt : null;
+    const reqMode =
+      typeof request.data?.mode === 'string' ? request.data.mode : null;
 
     const productIds = reqProductIds ?? (data.productIds || []);
     const materialNames = reqMaterialNames ?? (data.materialNames || []);
     const prompt = reqPrompt ?? (data.prompt || '');
+    const mode = reqMode ?? (data.mode || 'enhance');
 
     // Persist the latest selection so the saved render reflects what was used.
-    if (reqProductIds || reqMaterialNames || reqPrompt !== null) {
+    if (reqProductIds || reqMaterialNames || reqPrompt !== null || reqMode !== null) {
       await setRenderDoc(db, renderId, {
         ...(reqProductIds ? { productIds } : {}),
         ...(reqMaterialNames ? { materialNames } : {}),
         ...(reqPrompt !== null ? { prompt } : {}),
+        ...(reqMode !== null ? { mode } : {}),
       });
     }
 
@@ -425,7 +524,7 @@ export const generateRender = onCall(
         }
       }
 
-      const instruction = buildRenderInstruction(materialNames, prompt);
+      const instruction = buildRenderInstruction(materialNames, mode, prompt);
 
       // Interleave labeled text with each reference image so the model
       // knows exactly what each image represents.
@@ -514,7 +613,7 @@ async function runLegacyGenerateRender(uid, {
         console.warn('legacy skip reference image:', e.message);
       }
     }
-    const instruction = buildRenderInstruction(materialNames, prompt);
+    const instruction = buildRenderInstruction(materialNames, 'enhance', prompt);
     const parts = [{ text: instruction }, room];
     for (let i = 0; i < products.length; i++) {
       const label = materialNames[i]

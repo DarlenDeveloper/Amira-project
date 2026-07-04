@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:iconsax/iconsax.dart';
@@ -34,7 +35,6 @@ class VisualStudioScreen extends StatefulWidget {
 
 class _VisualStudioScreenState extends State<VisualStudioScreen> {
   final ImagePicker _picker = ImagePicker();
-  final TextEditingController _descCtrl = TextEditingController();
   XFile? _picked;
   int _fileBytes = 0;
   bool _uploading = false;
@@ -42,8 +42,10 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   String? _uploadedUrl;
   bool _generating = false;
   String? _resultUrl;
-  bool _enhancing = false;
   bool _saving = false;
+  String _mode = 'enhance'; // 'standard' | 'enhance'
+  bool _descExpanded = false;
+  final TextEditingController _descCtrl = TextEditingController();
 
   // Live catalogue from Firestore + the user's current selection.
   final List<Product> _catalog = [];
@@ -121,8 +123,8 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
         ),
         CoachStep(
           targetKey: _tipDescKey,
-          title: 'Describe the look',
-          body: 'Optionally tell the AI the style or mood you\'re going for.',
+          title: 'Choose your mode',
+          body: 'Standard installs materials as-is. Enhance adds professional lighting and integration.',
           radius: 28,
         ),
         CoachStep(
@@ -264,7 +266,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       // Material selection + prompt are decoupled and re-sent at generate time.
       final renderId = await RenderService.instance.startSession(
         source: _source,
-        prompt: _descCtrl.text.trim(),
+        mode: _mode,
       );
       if (stale()) return;
 
@@ -323,6 +325,7 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
         productIds: _selected.map((p) => p.id).toList(),
         materialNames: _selected.map((p) => p.name).toList(),
         prompt: _descCtrl.text.trim(),
+        mode: _mode,
       );
       if (!mounted || _disposed || (_shell?.sessionToken ?? 0) != token) return;
       setState(() {
@@ -333,31 +336,6 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       if (!mounted || _disposed) return;
       setState(() => _generating = false);
       _snack('Couldn\'t generate the render. Please try again.');
-    }
-  }
-
-  Future<void> _enhancePrompt() async {
-    if (_enhancing) return;
-    final raw = _descCtrl.text.trim();
-    if (raw.isEmpty && _selected.isEmpty) {
-      _snack('Add a short description or pick a material first.');
-      return;
-    }
-    setState(() => _enhancing = true);
-    try {
-      final enhanced = await RenderService.instance.enhancePrompt(
-        prompt: raw,
-        materialNames: _selected.map((p) => p.name).toList(),
-      );
-      if (!mounted || _disposed) return;
-      setState(() {
-        _descCtrl.text = enhanced;
-        _enhancing = false;
-      });
-    } catch (_) {
-      if (!mounted || _disposed) return;
-      setState(() => _enhancing = false);
-      _snack('Couldn\'t enhance the prompt. Please try again.');
     }
   }
 
@@ -407,115 +385,86 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     super.dispose();
   }
 
-  void _openMaterialPicker() {
-    final available = _catalog
-        .where((c) => !_selected.any((s) => s.id == c.id))
-        .toList();
+  /// Groups the catalogue by category for the collapsible picker.
+  Map<String, List<Product>> get _groupedCatalog {
+    final map = <String, List<Product>>{};
+    for (final p in _catalog) {
+      final cat = p.category.isNotEmpty ? p.category : 'Other';
+      map.putIfAbsent(cat, () => []).add(p);
+    }
+    return map;
+  }
 
+  void _openMaterialPicker() {
     showModalBottomSheet(
       context: context,
       backgroundColor: _white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20, 20, 20, 20 + MediaQuery.of(ctx).padding.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Choose a material',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _dark,
-                  fontFamily: 'Plus Jakarta Sans',
-                ),
+        final grouped = _groupedCatalog;
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.85,
+          expand: false,
+          builder: (_, scrollCtrl) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20, 20, 20, 20 + MediaQuery.of(ctx).padding.bottom,
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Pick what the AI should place in your room.',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: _grey,
-                  fontFamily: 'Plus Jakarta Sans',
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (available.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'All materials added.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _grey,
-                        fontFamily: 'Plus Jakarta Sans',
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Choose a material',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans',
                     ),
                   ),
-                )
-              else
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: available.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final m = available[i];
-                      return GestureDetector(
-                        onTap: () {
-                          // Multi-select up to the max. Guard so the user can't
-                          // exceed the per-render cap.
-                          if (_selected.length >= _maxMaterials) {
-                            _snack('You can add up to $_maxMaterials materials per render.');
-                            return;
-                          }
-                          setState(() => _selected.add(m));
-                          Navigator.of(ctx).pop();
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: SizedBox(
-                                width: 52,
-                                height: 52,
-                                child: ProductImage(
-                                  imageUrl: m.imageUrl,
-                                  cacheWidth: 150,
-                                  placeholderIconSize: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                m.name,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: _dark,
-                                  fontFamily: 'Plus Jakarta Sans',
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.add, color: _gold, size: 22),
-                          ],
-                        ),
-                      );
-                    },
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Browse by category and pick what to place in your room.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: _grey,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
                   ),
-                ),
-            ],
-          ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollCtrl,
+                      children: [
+                        for (final entry in grouped.entries)
+                          _CategorySection(
+                            category: entry.key,
+                            products: entry.value,
+                            selected: _selected,
+                            maxMaterials: _maxMaterials,
+                            onSelect: (product) {
+                              if (_selected.length >= _maxMaterials) {
+                                _snack('You can add up to $_maxMaterials materials per render.');
+                                return;
+                              }
+                              setState(() => _selected.add(product));
+                              Navigator.of(ctx).pop();
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -694,23 +643,20 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                 else
                   ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: Image.network(
-                      _resultUrl!,
+                    child: CachedNetworkImage(
+                      imageUrl: _resultUrl!,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      frameBuilder: (context, child, frame, wasSync) {
-                        if (wasSync) return child;
-                        return AnimatedOpacity(
-                          opacity: frame == null ? 0 : 1,
-                          duration: const Duration(milliseconds: 450),
-                          curve: Curves.easeOut,
-                          child: child,
-                        );
-                      },
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const _ShimmerLoading(height: 300);
-                      },
+                      placeholder: (context, url) =>
+                          const _ShimmerLoading(height: 300),
+                      errorWidget: (context, url, error) => Container(
+                        height: 300,
+                        color: const Color(0xFFEDEDE8),
+                        child: const Center(
+                          child: Icon(Icons.broken_image_rounded,
+                              size: 40, color: Color(0xFFB8B8B2)),
+                        ),
+                      ),
                     ),
                   ),
                 if (_resultUrl != null && !_generating) ...[
@@ -846,75 +792,158 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
 
               const SizedBox(height: 24),
 
-              // Description text area (pill-shaped)
+              // Mode selector (Standard / Enhance)
               Container(
                 key: _tipDescKey,
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _white,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(32),
                   border: Border.all(color: _lightGrey, width: 1.5),
                 ),
-                child: TextField(
-                  controller: _descCtrl,
-                  maxLines: 4,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: _dark,
-                    fontFamily: 'Plus Jakarta Sans',
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Add a description (optional)\nDescribe your design preferences...',
-                    hintStyle: TextStyle(
-                      color: _grey,
-                      fontSize: 15,
-                      fontFamily: 'Plus Jakarta Sans',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _mode = 'standard'),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _mode == 'standard' ? _gold : Colors.transparent,
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Standard',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: _mode == 'standard' ? _white : _grey,
+                                fontFamily: 'Plus Jakarta Sans',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _mode = 'enhance'),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _mode == 'enhance' ? _gold : Colors.transparent,
+                            borderRadius: BorderRadius.circular(26),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Enhance',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: _mode == 'enhance' ? _white : _grey,
+                                fontFamily: 'Plus Jakarta Sans',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  _mode == 'standard'
+                      ? 'Install materials exactly as they are — no creative changes.'
+                      : 'Enhance lighting and integration for a professional finish.',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: _grey,
+                    fontFamily: 'Plus Jakarta Sans',
                   ),
                 ),
               ),
 
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: _enhancing ? null : _enhancePrompt,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: _lightGold,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: _enhancing
-                              ? const CircularProgressIndicator(
-                                  color: _gold, strokeWidth: 2)
-                              : const Icon(Icons.auto_awesome,
-                                  size: 16, color: _gold),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _enhancing ? 'Enhancing…' : 'Enhance with AI',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _dark,
+              const SizedBox(height: 16),
+
+              // Collapsible description (optional)
+              GestureDetector(
+                onTap: () => setState(() => _descExpanded = !_descExpanded),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: _lightGrey, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notes_rounded, size: 18, color: _grey),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Add description (optional)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: _grey,
                             fontFamily: 'Plus Jakarta Sans',
                           ),
                         ),
-                      ],
+                      ),
+                      AnimatedRotation(
+                        turns: _descExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 22, color: _grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _lightGrey, width: 1.5),
+                    ),
+                    child: TextField(
+                      controller: _descCtrl,
+                      maxLines: 3,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: _dark,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Describe your design preferences...',
+                        hintStyle: TextStyle(
+                          color: _grey,
+                          fontSize: 14,
+                          fontFamily: 'Plus Jakarta Sans',
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
                   ),
                 ),
+                crossFadeState: _descExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 200),
               ),
 
               const SizedBox(height: 24),
@@ -1235,5 +1264,141 @@ class _SlidingGradientTransform extends GradientTransform {
   @override
   Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
     return Matrix4.translationValues(bounds.width * slidePercent, 0, 0);
+  }
+}
+
+/// Collapsible category section for the material picker bottom sheet.
+class _CategorySection extends StatefulWidget {
+  final String category;
+  final List<Product> products;
+  final List<Product> selected;
+  final int maxMaterials;
+  final void Function(Product) onSelect;
+
+  const _CategorySection({
+    required this.category,
+    required this.products,
+    required this.selected,
+    required this.maxMaterials,
+    required this.onSelect,
+  });
+
+  @override
+  State<_CategorySection> createState() => _CategorySectionState();
+}
+
+class _CategorySectionState extends State<_CategorySection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = widget.products
+        .where((p) => !widget.selected.any((s) => s.id == p.id))
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.category,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
+                  ),
+                ),
+                Text(
+                  '${available.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _grey,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
+                const SizedBox(width: 6),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded,
+                      size: 20, color: _grey),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Column(
+            children: [
+              if (available.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'All added',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _grey,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
+                  ),
+                )
+              else
+                ...available.map((m) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: GestureDetector(
+                        onTap: () => widget.onSelect(m),
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: ProductImage(
+                                  imageUrl: m.imageUrl,
+                                  cacheWidth: 150,
+                                  placeholderIconSize: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                m.name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: _dark,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.add_circle_outline_rounded,
+                                color: _gold, size: 20),
+                          ],
+                        ),
+                      ),
+                    )),
+            ],
+          ),
+          crossFadeState:
+              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+        const Divider(height: 1, color: _lightGrey),
+      ],
+    );
   }
 }
