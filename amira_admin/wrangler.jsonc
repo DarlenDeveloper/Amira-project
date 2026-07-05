@@ -3,6 +3,12 @@
   // `wrangler versions upload` / `deploy` reads this to know what to ship.
   "name": "amira-admin-dashboard",
   "compatibility_date": "2026-06-29",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
   "assets": {
     // The Vite build output served as static assets.
     "directory": "./dist",
