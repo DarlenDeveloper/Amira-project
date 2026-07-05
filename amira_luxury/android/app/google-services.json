@@ -7,6 +7,43 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1027356115889:android:4fe5acc65904c26eb4f390",
+        "android_client_info": {
+          "package_name": "com.amiraluxury.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU6QIx6DRCTB4XMXunt4giuhDkRkfv82A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1027356115889-v100ivssopflutc70s0g2olsfnqrj3l4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1027356115889-8alo6ac54tc3b8n0q1li6s55undpp73k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.amiraluxury.mobile",
+                "app_store_id": "6781709947"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1027356115889:android:fad7c25cbb0e1b03b4f390",
         "android_client_info": {
           "package_name": "com.amiraluxury.mobile"
@@ -39,10 +76,11 @@
               "client_type": 3
             },
             {
-              "client_id": "1027356115889-ddr3q6698ri4jeb3ls2u5tqgd7tl1976.apps.googleusercontent.com",
+              "client_id": "1027356115889-8alo6ac54tc3b8n0q1li6s55undpp73k.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.amiraluxury.mobile"
+                "bundle_id": "com.amiraluxury.mobile",
+                "app_store_id": "6781709947"
               }
             }
           ]
