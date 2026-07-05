@@ -367,6 +367,18 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     }
   }
 
+  /// Opens the render in a full-screen, pinch-to-zoom viewer.
+  void _openFullScreen(String url) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        transitionDuration: const Duration(milliseconds: 250),
+        pageBuilder: (_, __, ___) => _FullScreenImageViewer(imageUrl: url),
+      ),
+    );
+  }
+
   Future<void> _addSelectedToCart() async {
     if (_selected.isEmpty) return;
     for (final p in _selected) {
@@ -641,22 +653,49 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                 if (_generating)
                   const _ShimmerLoading(height: 320)
                 else
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: CachedNetworkImage(
-                      imageUrl: _resultUrl!,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          const _ShimmerLoading(height: 300),
-                      errorWidget: (context, url, error) => Container(
-                        height: 300,
-                        color: const Color(0xFFEDEDE8),
-                        child: const Center(
-                          child: Icon(Icons.broken_image_rounded,
-                              size: 40, color: Color(0xFFB8B8B2)),
+                  GestureDetector(
+                    onTap: () => _openFullScreen(_resultUrl!),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Hero(
+                            tag: 'render-result',
+                            child: CachedNetworkImage(
+                              imageUrl: _resultUrl!,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  const _ShimmerLoading(height: 300),
+                              errorWidget: (context, url, error) => Container(
+                                height: 300,
+                                color: const Color(0xFFEDEDE8),
+                                child: const Center(
+                                  child: Icon(Icons.broken_image_rounded,
+                                      size: 40, color: Color(0xFFB8B8B2)),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        // Subtle "tap to expand" affordance.
+                        Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.45),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.fullscreen_rounded,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 if (_resultUrl != null && !_generating) ...[
@@ -1252,6 +1291,70 @@ class _ShimmerLoadingState extends State<_ShimmerLoading>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full-screen render viewer: tap the result to expand it here. Supports
+/// pinch-to-zoom / pan (InteractiveViewer), tap-outside or the close button to
+/// dismiss, and shares a Hero transition with the inline thumbnail.
+class _FullScreenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  const _FullScreenImageViewer({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // Tap anywhere on the backdrop to dismiss.
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              child: const ColoredBox(color: Colors.transparent),
+            ),
+          ),
+          Center(
+            child: Hero(
+              tag: 'render-result',
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(
+                      color: _gold, strokeWidth: 2),
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: Icon(Icons.broken_image_rounded,
+                        size: 48, color: Color(0xFFB8B8B2)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Close button.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close_rounded,
+                    size: 24, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
