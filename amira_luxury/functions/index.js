@@ -180,29 +180,40 @@ function buildRenderInstruction(materialNames, mode, prompt) {
     );
   }
 
-  // ── Enhance mode (default) — current creative prompt + hard rules ──
+  // ── Enhance mode (default) — restored a1a75a7 prompt ──
   return (
     'You are an award-winning luxury interior designer creating a premium ' +
-    'design visualization for a client. Apply the specified materials/' +
-    'products into the room in Image 1 and enhance the scene so the new ' +
-    'finishes look professionally installed and cohesive. Output a single ' +
-    'photorealistic image.\n' +
-    surfaceAssignments + '\n\n' +
-    hardRules +
-    '\n\nENHANCEMENT ALLOWANCES:\n' +
-    '- Adjust ambient lighting to complement the new finishes (warmer tones ' +
+    'design visualization for a client. Edit the room in Image 1 by applying ' +
+    'the materials/products shown in the reference images — but go beyond ' +
+    'simply placing them. Enhance the overall space so it feels like a ' +
+    'professionally designed, cohesive interior. Output a single photorealistic ' +
+    'image of the redesigned room.\n\n' +
+    'RULES:\n' +
+    '1. PRESERVE the exact camera angle, perspective, room layout, and ' +
+    'dimensions.\n' +
+    '2. For surface materials (wall panels, marble sheets, stone, tiles, ' +
+    'flooring, artificial grass, wallpaper): apply as a seamless, realistic ' +
+    'finish on the appropriate surface. Wall materials go on walls. Floor ' +
+    'materials go on floors. Do NOT place them as framed pictures, standalone ' +
+    'panels, or objects.\n' +
+    '3. For physical products (lights, blinds, furniture): install them ' +
+    'naturally at correct scale and position (lights on ceiling/wall, blinds ' +
+    'on windows).\n' +
+    '4. ENHANCE the scene beyond just placing materials:\n' +
+    '   - Adjust ambient lighting to complement the new finishes (warmer tones ' +
     'for wood/gold materials, cooler for marble/stone).\n' +
-    '- Add realistic shadows and reflections that the new surfaces would ' +
-    'naturally produce (marble reflects light, wood absorbs it).\n' +
-    '- Improve visual harmony of how new materials meet existing edges — ' +
-    'seamless transitions, natural shadow lines.\n' +
-    '- The new materials should look like they have been installed for years, ' +
-    'not freshly pasted in.\n' +
-    '- Do NOT change unchanged objects to "match" the new materials. ' +
-    'Enhancement applies only to how the new materials interact with light ' +
-    'and sit in the scene.\n\n' +
-    'The output must look like a professional interior photograph for a ' +
-    'luxury design magazine — not a 3D render, collage, or illustration.' +
+    '   - Add subtle, tasteful styling touches that a professional designer ' +
+    'would include — refined shadow play, gentle light reflections on new ' +
+    'surfaces, improved color harmony across the room.\n' +
+    '   - Make existing furniture and decor feel intentionally coordinated with ' +
+    'the new finishes rather than mismatched.\n' +
+    '   - The final result should look like the room was professionally ' +
+    'redesigned as a whole, not like materials were copy-pasted in.\n' +
+    '5. The output must look like a real photograph taken by a professional ' +
+    'interior photographer for a luxury design magazine — not a 3D render, ' +
+    'collage, or illustration.\n' +
+    '6. Do NOT add any text, watermarks, labels, or borders to the image.\n' +
+    '7. Match the resolution and aspect ratio of the original room photo.' +
     materialLabels +
     (prompt ? '\n\nAdditional design direction: ' + prompt : '')
   );
@@ -541,7 +552,8 @@ export const generateRender = onCall(
       const response = await ai.models.generateContent({
         model: IMAGE_MODEL,
         contents: [{ role: 'user', parts }],
-        config: { temperature: 0.2 },
+        // Dynamic thinking (-1): let the model reason before generating.
+        config: { temperature: 0.2, thinkingConfig: { thinkingBudget: -1 } },
       });
 
       const cand = response?.candidates?.[0];
@@ -626,7 +638,8 @@ async function runLegacyGenerateRender(uid, {
     const response = await ai.models.generateContent({
       model: IMAGE_MODEL,
       contents: [{ role: 'user', parts }],
-      config: { temperature: 0.2 },
+      // Dynamic thinking (-1): let the model reason before generating.
+      config: { temperature: 0.2, thinkingConfig: { thinkingBudget: -1 } },
     });
     const imgPart = response?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
     if (!imgPart) {
