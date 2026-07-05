@@ -27,6 +27,7 @@ class RenderService {
     List<String> materialNames = const [],
     String source = 'tab',
     String prompt = '',
+    String mode = 'enhance',
   }) async {
     final callable = _functions.httpsCallable('startRenderSession');
     final res = await callable.call<Map<String, dynamic>>({
@@ -34,6 +35,7 @@ class RenderService {
       'materialNames': materialNames,
       'source': source,
       'prompt': prompt,
+      'mode': mode,
     });
     final id = res.data['renderId'] as String?;
     if (id == null || id.isEmpty) throw Exception('No render session id returned.');
@@ -80,7 +82,7 @@ class RenderService {
   }
 
   /// Generates the AI render for an existing session. The latest material
-  /// selection and prompt are sent so they override whatever was stored when
+  /// selection and mode are sent so they override whatever was stored when
   /// the session started (selection is decoupled from upload).
   Future<String> generateRender({
     required String renderId,
@@ -88,6 +90,7 @@ class RenderService {
     List<String> productIds = const [],
     List<String> materialNames = const [],
     String prompt = '',
+    String mode = 'enhance',
   }) async {
     final callable = _functions.httpsCallable(
       'generateRender',
@@ -99,6 +102,7 @@ class RenderService {
       'productIds': productIds,
       'materialNames': materialNames,
       'prompt': prompt,
+      'mode': mode,
     });
     final url = res.data['resultUrl'] as String?;
     if (url == null || url.isEmpty) throw Exception('No render returned.');

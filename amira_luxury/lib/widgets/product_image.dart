@@ -1,9 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'shimmer.dart';
 
 /// Renders a product image from the admin-uploaded [imageUrl].
 ///
+/// Uses [CachedNetworkImage] so repeated views load from disk cache instantly.
 /// There is no bundled-asset fallback: images come only from the backend. When
 /// no URL is set (or it fails to load) a neutral "no image" placeholder is
 /// shown. While a remote image loads, a shimmer placeholder is shown.
@@ -30,23 +32,23 @@ class ProductImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!_hasUrl) return _NoImage(iconSize: placeholderIconSize);
-    return Image.network(
-      imageUrl!,
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
       fit: fit,
       width: double.infinity,
       height: double.infinity,
-      cacheWidth: cacheWidth,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return const Shimmer(
-          child: SkeletonBox(
-            width: double.infinity,
-            height: double.infinity,
-            borderRadius: BorderRadius.zero,
-          ),
-        );
-      },
-      errorBuilder: (context, error, stack) =>
+      memCacheWidth: cacheWidth ?? 300,
+      maxWidthDiskCache: 600,
+      maxHeightDiskCache: 600,
+      fadeInDuration: const Duration(milliseconds: 200),
+      placeholder: (context, url) => const Shimmer(
+        child: SkeletonBox(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: BorderRadius.zero,
+        ),
+      ),
+      errorWidget: (context, url, error) =>
           _NoImage(iconSize: placeholderIconSize),
     );
   }
