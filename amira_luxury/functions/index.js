@@ -165,16 +165,41 @@ function buildRenderInstruction(materialNames, mode, prompt) {
 
   if (mode === 'standard') {
     return (
-      'You are a professional interior installer. Apply the specified ' +
-      'materials/products into the room in Image 1 exactly as a real ' +
-      'installer would — nothing more, nothing less. Output a single ' +
+      'You are a professional interior finishing contractor producing a ' +
+      'photorealistic visualization of installed materials. Apply the ' +
+      'specified materials/products onto the surfaces in Image 1 exactly as ' +
+      'a real installer would — nothing more, nothing less. Output a single ' +
       'photorealistic image.\n' +
       surfaceAssignments + '\n\n' +
       hardRules +
-      '\n\nThe output must look like a real photograph. Maintain the exact ' +
-      'same lighting conditions as the original — do not adjust ambient ' +
-      'light, color temperature, or shadows beyond what the new materials ' +
-      'would physically produce.' +
+      '\n\nINSTALLATION REALISM (critical):\n' +
+      '- Each material must COVER THE ENTIRE assigned surface from edge to ' +
+      'edge, corner to corner — not appear as a small swatch, floating ' +
+      'panel, or framed picture pasted onto the wall.\n' +
+      '- Materials must WRAP and FOLLOW the geometry of the surface they are ' +
+      'applied to — if a wall is curved, the material curves with it; if ' +
+      'there is a corner, the material turns the corner naturally.\n' +
+      '- Edges where a material meets another surface (ceiling, floor, ' +
+      'adjacent wall, furniture) must show realistic termination: shadow ' +
+      'lines, natural trim, or flush meeting — never a hard rectangular ' +
+      'cutoff floating in space.\n' +
+      '- The material must appear as a PERMANENT, INSTALLED FINISH — as if ' +
+      'it has been glued, screwed, or mounted by a professional. It should ' +
+      'look like part of the building, not a sticker or overlay.\n' +
+      '- Preserve the original surface\'s depth, texture cues, and ' +
+      'imperfections where they would show through (e.g., panel joints on ' +
+      'a large wall, slight undulation on an uneven substrate).\n' +
+      '- Faux plant walls must fill the entire assigned wall as a seamless ' +
+      'green wall installation — densely packed, edge-to-edge, mounted ' +
+      'flush against the surface.\n\n' +
+      'LIGHTING: Maintain the exact same lighting conditions as the ' +
+      'original — do not adjust ambient light, color temperature, or ' +
+      'shadows beyond what the new materials would physically produce. The ' +
+      'new surfaces should interact with existing light naturally (reflect ' +
+      'if glossy, absorb if matte) but do not add any new light sources or ' +
+      'change the overall exposure.\n\n' +
+      'The final image must be indistinguishable from a real photograph of ' +
+      'a completed interior installation.' +
       materialLabels +
       (prompt ? '\n\nAdditional design direction: ' + prompt : '')
     );
