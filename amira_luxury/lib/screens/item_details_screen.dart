@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/product.dart';
 import '../services/appointment_service.dart';
+import '../services/product_service.dart';
 import '../services/shop_service.dart';
 import '../utils/currency.dart';
 import '../utils/product_colors.dart';
@@ -76,7 +78,16 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final product = _product;
+    return StreamBuilder<Product?>(
+      stream: ProductService.instance.watchProduct(_product.id),
+      builder: (context, snapshot) {
+        final product = snapshot.data ?? _product;
+        return _buildScaffold(context, product);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, Product product) {
     return Scaffold(
       backgroundColor: _bg,
       body: Column(
@@ -245,7 +256,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       ),
                     ),
 
-                  if (_hasColors) ...[
+                  if (product.colors.isNotEmpty) ...[
                     const Padding(
                       padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
                       child: Text(
@@ -404,6 +415,29 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                     ),
                   ),
                 ],
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  final p = _product;
+                  final slug = p.id;
+                  final url = 'https://amirainteriors.com/shop-2/?product=$slug';
+                  SharePlus.instance.share(
+                    ShareParams(
+                      text: 'Check out ${p.name} on Amira Interiors — ${formatUgx(p.value)} / ${p.unit}\n$url',
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _bg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE4E4DE), width: 1.5),
+                  ),
+                  child: const Icon(Icons.share_rounded, size: 20, color: _dark),
+                ),
               ),
             ],
           ),
