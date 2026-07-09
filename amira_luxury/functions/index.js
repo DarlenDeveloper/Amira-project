@@ -76,7 +76,7 @@ const SURFACE_KEYWORDS = {
   'WINDOWS': [
     'blind', 'curtain', 'shutter', 'drape', 'roller', 'zebra', 'venetian',
   ],
-  'CEILING': [
+  'LIGHTING': [
     'light', 'chandelier', 'pendant', 'lamp', 'spotlight', 'sconce',
     'downlight', 'ceiling', 'led strip',
   ],
@@ -104,11 +104,12 @@ function buildSurfaceAssignments(materialNames) {
   if (!materialNames.length) return '';
   const lines = materialNames.map((name) => {
     const surface = categorizeProduct(name);
-    const target = surface === 'WALLS' ? 'WALLS only'
-      : surface === 'WINDOWS' ? 'WINDOWS only'
-      : surface === 'CEILING' ? 'CEILING/WALL fixture'
-      : surface === 'FLOOR' ? 'FLOOR only'
-      : 'TRIM/ACCENT edges';
+    let target;
+    if (surface === 'WALLS') target = 'WALLS only — cover the entire wall surface edge-to-edge as a seamless installed finish';
+    else if (surface === 'WINDOWS') target = 'WINDOWS only — fit as properly installed window treatments';
+    else if (surface === 'LIGHTING') target = 'CEILING & WALLS — install a FULL multi-point lighting scheme: multiple recessed spotlights evenly spaced across the ceiling, pendant lights hanging at appropriate heights, and warm LED strip lighting along wall panels or ceiling coves. Do NOT add just one fixture. Make the lighting layered, architectural and atmospheric';
+    else if (surface === 'FLOOR') target = 'FLOOR only — cover the entire floor surface';
+    else target = 'TRIM/ACCENT edges — apply as precise metal edge strips and trim at panel joints, wall edges, and ceiling transitions';
     return `- "${name}" → apply to ${target}`;
   });
   return '\n\nSURFACE ASSIGNMENTS:\n' + lines.join('\n');

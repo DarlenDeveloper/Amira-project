@@ -43,7 +43,8 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   bool _generating = false;
   String? _resultUrl;
   bool _saving = false;
-  String _mode = 'enhance'; // 'standard' | 'enhance'
+  // Always enhanced — standard mode removed.
+  static const String _mode = 'enhance';
   bool _descExpanded = false;
   final TextEditingController _descCtrl = TextEditingController();
 
@@ -831,90 +832,11 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
 
               const SizedBox(height: 24),
 
-              // Mode selector (Standard / Enhance)
-              Container(
-                key: _tipDescKey,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _white,
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(color: _lightGrey, width: 1.5),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _mode = 'standard'),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: _mode == 'standard' ? _gold : Colors.transparent,
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Standard',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: _mode == 'standard' ? _white : _grey,
-                                fontFamily: 'Plus Jakarta Sans',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _mode = 'enhance'),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: _mode == 'enhance' ? _gold : Colors.transparent,
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Enhance',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: _mode == 'enhance' ? _white : _grey,
-                                fontFamily: 'Plus Jakarta Sans',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  _mode == 'standard'
-                      ? 'Install materials exactly as they are — no creative changes.'
-                      : 'Enhance lighting and integration for a professional finish.',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: _grey,
-                    fontFamily: 'Plus Jakarta Sans',
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
               // Collapsible description (optional)
               GestureDetector(
                 onTap: () => setState(() => _descExpanded = !_descExpanded),
                 child: Container(
+                  key: _tipDescKey,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   decoration: BoxDecoration(
                     color: _white,
