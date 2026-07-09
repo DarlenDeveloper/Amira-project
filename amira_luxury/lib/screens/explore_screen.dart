@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_shell_controller.dart';
+import '../models/cart_line.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 import '../services/shop_service.dart';
@@ -169,8 +170,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     );
                   },
                   behavior: HitTestBehavior.opaque,
-                  child: const Icon(Icons.shopping_cart_rounded,
-                      color: _dark, size: 26),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.shopping_cart_rounded,
+                          color: _dark, size: 26),
+                      StreamBuilder<List<CartLine>>(
+                        stream: ShopService.instance.watchCart(),
+                        builder: (context, snapshot) {
+                          final count = (snapshot.data ?? []).length;
+                          if (count == 0) return const SizedBox.shrink();
+                          return Positioned(
+                            right: -6,
+                            top: -6,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              decoration: const BoxDecoration(
+                                color: _gold,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                count > 9 ? '9+' : '$count',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: _white,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
