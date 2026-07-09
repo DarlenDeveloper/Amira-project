@@ -454,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             const SizedBox(height: 14),
                             _textPill(
-                              icon: Iconsax.lock_1,
+                              icon: Iconsax.key,
                               hint: 'confirm password',
                               controller: _confirmController,
                               obscure: _obscureConfirm,
@@ -704,21 +704,41 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _passwordField() {
     // "I forgot" only applies to email login — phone has no reset address.
     final forgot = (_isSignup || _usePhone) ? null : _forgotPill();
-    return _textPill(
-      icon: Iconsax.key,
-      hint: 'password',
-      controller: _passwordController,
-      obscure: _obscurePassword,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _eyeToggle(
-            obscured: _obscurePassword,
-            onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _textPill(
+          icon: Iconsax.key,
+          hint: 'password',
+          controller: _passwordController,
+          obscure: _obscurePassword,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _eyeToggle(
+                obscured: _obscurePassword,
+                onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              if (forgot != null) forgot,
+            ],
           ),
-          if (forgot != null) forgot,
+        ),
+        if (_isSignup) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Text(
+              'Password must be at least 6 characters',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: _passwordController.text.length >= 6 ? _grey : Colors.redAccent.shade100,
+                fontFamily: 'Plus Jakarta Sans',
+              ),
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 

@@ -420,24 +420,14 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               GestureDetector(
                 onTap: () {
                   final p = _product;
-                  final slug = p.id;
-                  final url = 'https://amirainteriors.com/shop-2/?product=$slug';
+                  final url = 'https://amirainteriors.com/shop-2/?product=${p.id}';
                   SharePlus.instance.share(
                     ShareParams(
                       text: 'Check out ${p.name} on Amira Interiors — ${formatUgx(p.value)} / ${p.unit}\n$url',
                     ),
                   );
                 },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _bg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFE4E4DE), width: 1.5),
-                  ),
-                  child: const Icon(Icons.share_rounded, size: 20, color: _dark),
-                ),
+                child: const Icon(Icons.share_rounded, size: 22, color: _dark),
               ),
             ],
           ),
