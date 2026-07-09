@@ -206,7 +206,7 @@ function buildRenderInstruction(materialNames, mode, prompt) {
     );
   }
 
-  // ── Enhance mode (default) — restored a1a75a7 prompt ──
+  // ── Enhance mode (default) ──
   return (
     'You are an award-winning luxury interior designer creating a premium ' +
     'design visualization for a client. Edit the room in Image 1 by applying ' +
@@ -215,31 +215,34 @@ function buildRenderInstruction(materialNames, mode, prompt) {
     'professionally designed, cohesive interior. Output a single photorealistic ' +
     'image of the redesigned room.\n\n' +
     'RULES:\n' +
-    '1. PRESERVE the exact camera angle, perspective, room layout, and ' +
-    'dimensions.\n' +
-    '2. For surface materials (wall panels, marble sheets, stone, tiles, ' +
+    '1. ARCHITECTURE IS SACRED — never alter the building structure. The ' +
+    'exact position, size, and shape of every window, door, wall, ceiling, ' +
+    'floor, column, arch, and room boundary must remain pixel-perfect ' +
+    'identical to Image 1. Do not widen, heighten, reposition, or redesign ' +
+    'any architectural element under any circumstances. The room dimensions ' +
+    'and ceiling height must not change.\n' +
+    '2. CAMERA LOCK — the output must match the exact camera position, angle, ' +
+    'focal length, field of view, and perspective of Image 1. No zoom, crop, ' +
+    'shift, or recomposition.\n' +
+    '3. For surface materials (wall panels, marble sheets, stone, tiles, ' +
     'flooring, artificial grass, wallpaper): apply as a seamless, realistic ' +
     'finish on the appropriate surface. Wall materials go on walls. Floor ' +
     'materials go on floors. Do NOT place them as framed pictures, standalone ' +
     'panels, or objects.\n' +
-    '3. For physical products (lights, blinds, furniture): install them ' +
-    'naturally at correct scale and position (lights on ceiling/wall, blinds ' +
-    'on windows).\n' +
-    '4. ENHANCE the scene beyond just placing materials:\n' +
-    '   - Adjust ambient lighting to complement the new finishes (warmer tones ' +
-    'for wood/gold materials, cooler for marble/stone).\n' +
-    '   - Add subtle, tasteful styling touches that a professional designer ' +
-    'would include — refined shadow play, gentle light reflections on new ' +
-    'surfaces, improved color harmony across the room.\n' +
-    '   - Make existing furniture and decor feel intentionally coordinated with ' +
-    'the new finishes rather than mismatched.\n' +
-    '   - The final result should look like the room was professionally ' +
-    'redesigned as a whole, not like materials were copy-pasted in.\n' +
-    '5. The output must look like a real photograph taken by a professional ' +
-    'interior photographer for a luxury design magazine — not a 3D render, ' +
-    'collage, or illustration.\n' +
-    '6. Do NOT add any text, watermarks, labels, or borders to the image.\n' +
-    '7. Match the resolution and aspect ratio of the original room photo.' +
+    '4. For physical products (lights, blinds): install them naturally at ' +
+    'correct scale and position (lights on ceiling/wall, blinds on windows). ' +
+    'For lights, install a full layered scheme — multiple recessed spotlights, ' +
+    'pendants, and LED strips — not just a single fixture.\n' +
+    '5. ENHANCE the scene beyond just placing materials:\n' +
+    '   - Adjust ambient lighting to complement the new finishes.\n' +
+    '   - Add subtle styling touches — refined shadow play, light reflections ' +
+    'on new surfaces, improved color harmony.\n' +
+    '   - Make the result look like a professionally designed interior, not ' +
+    'like materials were copy-pasted in.\n' +
+    '6. The output must look like a real photograph by a professional interior ' +
+    'photographer — not a 3D render, collage, or illustration.\n' +
+    '7. Do NOT add any text, watermarks, labels, or borders.\n' +
+    '8. Match the resolution and aspect ratio of the original room photo.' +
     materialLabels +
     (prompt ? '\n\nAdditional design direction: ' + prompt : '')
   );
