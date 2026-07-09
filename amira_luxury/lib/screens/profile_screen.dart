@@ -465,6 +465,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// Opens the Amira contact page (Help Center / Contact Us).
+  Future<void> _openContactPage(BuildContext context) async {
+    final uri = Uri.parse('https://amirainteriors.com/contact/');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not open the contact page.',
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans'),
+          ),
+        ),
+      );
+    }
+  }
+
   /// Asks the user why they're leaving, then signs them out.
   Future<void> _confirmDeleteAccount(BuildContext context) async {
     String? selectedReason;
@@ -651,10 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _confirmDeleteAccount(context);
                     } else if (label == 'Help Center' ||
                         label == 'Contact Us') {
-                      // Route support requests to the Amira AI agent tab.
-                      final shell = AppShellController.maybeOf(context);
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                      shell?.openAgent(source: 'support');
+                      _openContactPage(context);
                     } else if (label == 'Restart Tutorial') {
                       _restartTutorial();
                     }

@@ -573,20 +573,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => AppShellController.of(context).openVisualStudio(
-                    source: 'home',
-                  ),
-                  child: const Icon(Iconsax.gallery5,
-                      color: Color(0xFF8B8B8B), size: 24),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () {},
-                  child: const Icon(Iconsax.microphone_25,
-                      color: Color(0xFF8B8B8B), size: 24),
-                ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 18),
                 Expanded(
                   child: TextField(
                     controller: _agentSearchCtrl,
