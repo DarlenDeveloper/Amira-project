@@ -101,6 +101,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final email = _profile?.email ?? user?.email;
     final phone = _profile?.phone ?? user?.phoneNumber;
+    
+    // Determine if user authenticated with phone
+    // If phone exists, we prioritize showing phone over email
+    final isPhoneAuth = (phone != null && phone.isNotEmpty);
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -138,15 +142,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               controller: _addressController,
                               keyboard: TextInputType.streetAddress,
                             ),
-                            if (email != null && email.isNotEmpty) ...[
+                            if (isPhoneAuth) ...[
+                              const SizedBox(height: 20),
+                              _label('Phone'),
+                              _readOnly(Iconsax.call, phone!),
+                            ] else if (email != null && email.isNotEmpty && !email.contains('@phone.')) ...[
                               const SizedBox(height: 20),
                               _label('Email'),
                               _readOnly(Iconsax.sms, email),
-                            ],
-                            if (phone != null && phone.isNotEmpty) ...[
-                              const SizedBox(height: 20),
-                              _label('Phone'),
-                              _readOnly(Iconsax.call, phone),
                             ],
                             const SizedBox(height: 36),
                             _saveButton(),
@@ -222,7 +225,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: _white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -270,7 +273,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: const Color(0xFFEDEDE8),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Row(
         children: [

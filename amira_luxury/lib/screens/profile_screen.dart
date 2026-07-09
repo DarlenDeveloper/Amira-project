@@ -276,11 +276,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? authName
                 : 'Amira Member';
 
-        final subtitle = profile?.email ??
-            user?.email ??
-            profile?.phone ??
-            user?.phoneNumber ??
-            '';
+        final email = profile?.email ?? user?.email;
+        final phone = profile?.phone ?? user?.phoneNumber;
+        final address = profile?.address ?? '';
+        
+        // Show address as subtitle instead of email/phone
+        final subtitle = address;
 
         final photoUrl = profile?.photoUrl ?? user?.photoURL;
         final ImageProvider avatar = (photoUrl != null && photoUrl.isNotEmpty)
