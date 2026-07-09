@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import '../app_shell_controller.dart';
 import '../models/product.dart';
 import '../services/appointment_service.dart';
-import '../services/order_service.dart';
 import '../services/shop_service.dart';
 import '../utils/currency.dart';
 import '../utils/product_colors.dart';
@@ -66,40 +64,14 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
     _snack('Added $_qty × ${_product.name}$colorNote to cart');
   }
 
-  Future<void> _placeOrder() async {
-    if (_product.isOutOfStock) {
-      _snack('${_product.name} is currently out of stock');
-      return;
-    }
-    if (_hasColors && _selectedColor == null) {
-      _snack('Please select a colour');
-      return;
-    }
-    try {
-      await OrderService.instance.placeOrderForProduct(
-        _product,
-        _qty,
-        color: _selectedColor,
-      );
-      if (!mounted) return;
-      _snack('Order placed for ${_product.name}');
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Couldn\'t place the order. Please try again.');
-    }
-  }
-
   Future<void> _bookAppointment() async {
-    try {
-      await AppointmentService.instance.requestAppointment(
-        aboutProduct: _product,
-      );
-      if (!mounted) return;
-      _snack('Appointment request sent');
-    } catch (_) {
-      if (!mounted) return;
-      _snack('Couldn\'t send the request. Please try again.');
-    }
+    // Show appointment booking form
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AppointmentBookingForm(product: _product),
+    );
   }
 
   @override
@@ -111,7 +83,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 280),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -143,14 +115,31 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 icon: Icons.arrow_back,
                                 onTap: () => Navigator.of(context).maybePop(),
                               ),
-                              _circleBtn(
-                                icon: Icons.shopping_bag_rounded,
-                                dark: true,
-                                onTap: _addToCart,
-                              ),
                             ],
                           ),
                         ),
+                        if (product.badge != null && product.badge!.isNotEmpty)
+                          Positioned(
+                            bottom: 16,
+                            left: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _gold,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                product.badge!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _white,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -159,17 +148,34 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            product.name,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: _dark,
-                              fontFamily: 'Plus Jakarta Sans',
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: _dark,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
+                              ),
+                              if (product.desc.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  product.desc,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: _grey,
+                                    fontFamily: 'Plus Jakarta Sans',
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -224,19 +230,20 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                     ),
 
                   // Description
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                    child: Text(
-                      product.about,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: _grey,
-                        fontFamily: 'Plus Jakarta Sans',
-                        height: 1.5,
+                  if (product.about.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                      child: Text(
+                        product.about,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: _grey,
+                          fontFamily: 'Plus Jakarta Sans',
+                          height: 1.5,
+                        ),
                       ),
                     ),
-                  ),
 
                   if (_hasColors) ...[
                     const Padding(
@@ -398,54 +405,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _SlideToAction(
-                  label: 'Visualise with AI',
-                  onComplete: () {
-                    final shell = AppShellController.of(context);
-                    Navigator.of(context).pop();
-                    shell.openVisualStudio(
-                      product: _product,
-                      source: 'item_details',
-                    );
-                  },
-                ),
-              ),
             ],
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              final shell = AppShellController.of(context);
-              Navigator.of(context).pop();
-              shell.openAgent(
-                productId: _product.id,
-                seedMessage: 'Tell me about ${_product.name}',
-                source: 'product_ask',
-                autoSend: true,
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: _white,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: _gold, width: 1.5),
-              ),
-              child: const Center(
-                child: Text(
-                  'Ask Amira about this',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _dark,
-                    fontFamily: 'Plus Jakarta Sans',
-                  ),
-                ),
-              ),
-            ),
           ),
           const SizedBox(height: 16),
           // Order + Book Appointment (wired in the Orders / Appointments phases)
@@ -453,7 +413,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: _placeOrder,
+                  onTap: _addToCart,
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
@@ -462,7 +422,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                     ),
                     child: const Center(
                       child: Text(
-                        'Order',
+                        'Add to Cart',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -653,6 +613,183 @@ class _SlideToActionState extends State<_SlideToAction> {
           ),
         );
       },
+    );
+  }
+}
+
+
+class _AppointmentBookingForm extends StatefulWidget {
+  final Product product;
+  const _AppointmentBookingForm({required this.product});
+
+  @override
+  State<_AppointmentBookingForm> createState() => _AppointmentBookingFormState();
+}
+
+class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
+  final _dateCtrl = TextEditingController();
+  final _timeCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _dateCtrl.dispose();
+    _timeCtrl.dispose();
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+    );
+    if (date != null) {
+      _dateCtrl.text = '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 10, minute: 0),
+    );
+    if (time != null && mounted) {
+      _timeCtrl.text = time.format(context);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_dateCtrl.text.trim().isEmpty || _timeCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date and time')),
+      );
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await AppointmentService.instance.requestAppointment(
+        aboutProduct: widget.product,
+        date: _dateCtrl.text.trim(),
+        time: _timeCtrl.text.trim(),
+        note: _noteCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Appointment request sent!')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not book appointment')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(24, 32, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        decoration: const BoxDecoration(
+          color: _bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Book Appointment', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: _dark, fontFamily: 'Plus Jakarta Sans')),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 36, height: 36,
+                      decoration: const BoxDecoration(color: _white, shape: BoxShape.circle),
+                      child: const Icon(Icons.close, size: 20, color: _dark),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Booking for ${widget.product.name}',
+                style: const TextStyle(fontSize: 14, color: _grey, fontFamily: 'Plus Jakarta Sans'),
+              ),
+              const SizedBox(height: 24),
+              _field('Preferred Date', _dateCtrl, Icons.calendar_today_outlined,
+                  hint: 'e.g. 25 July 2026', readOnly: true, onTap: _pickDate, required: true),
+              const SizedBox(height: 16),
+              _field('Preferred Time', _timeCtrl, Icons.access_time_outlined,
+                  hint: 'e.g. 10:00 AM', readOnly: true, onTap: _pickTime, required: true),
+              const SizedBox(height: 16),
+              _field('Notes', _noteCtrl, Icons.notes_outlined,
+                  hint: 'Any specific requirements or questions? (optional)', maxLines: 3),
+              const SizedBox(height: 32),
+              GestureDetector(
+                onTap: _busy ? null : _submit,
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(color: _dark, borderRadius: BorderRadius.circular(28)),
+                  alignment: Alignment.center,
+                  child: _busy
+                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_white)))
+                      : const Text('Confirm Booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _white, fontFamily: 'Plus Jakarta Sans')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl, IconData icon, {String hint = '', bool required = false, bool readOnly = false, VoidCallback? onTap, TextInputType keyboard = TextInputType.text, int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${label.toUpperCase()}${required ? ' *' : ''}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _grey, fontFamily: 'Plus Jakarta Sans', letterSpacing: 0.8)),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: _grey),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: ctrl,
+                    readOnly: readOnly,
+                    keyboardType: keyboard,
+                    maxLines: maxLines,
+                    onTap: onTap,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _dark, fontFamily: 'Plus Jakarta Sans'),
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      hintStyle: const TextStyle(color: Color(0xFFB8B8B8), fontSize: 14, fontFamily: 'Plus Jakarta Sans'),
+                      border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -40,6 +40,9 @@ class AppointmentService {
   Future<void> requestAppointment({
     String type = 'Design Consultation',
     Product? aboutProduct,
+    String date = '',
+    String time = '',
+    String note = '',
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -54,22 +57,28 @@ class AppointmentService {
         : (user.displayName?.trim().isNotEmpty ?? false)
             ? user.displayName!.trim()
             : 'Amira Member';
-    final phone = profile?.phone?.trim() ?? '';
+    final phone = profile?.phone?.trim() ?? user.phoneNumber ?? '';
     final rawEmail = profile?.email ?? user.email ?? '';
-    final email = rawEmail.contains('@phone.amira.app') ? '' : rawEmail;
+    final resolvedEmail = rawEmail.contains('@phone.amira.app') ? '' : rawEmail;
+
+    final noteText = note.isNotEmpty
+        ? note
+        : aboutProduct != null
+            ? 'Enquiry about ${aboutProduct.name}'
+            : 'Appointment request from the app';
 
     await _appointments.add({
       'appointmentId': _newRef(),
       'uid': user.uid,
       'customer': customer,
       'phone': phone,
-      'email': email,
+      'email': resolvedEmail,
       'type': type,
-      'date': '',
-      'time': '',
-      'note': aboutProduct != null
-          ? 'Enquiry about ${aboutProduct.name}'
-          : 'Appointment request from the app',
+      'productId': aboutProduct?.id ?? '',
+      'productName': aboutProduct?.name ?? '',
+      'date': date,
+      'time': time,
+      'note': noteText,
       'status': AppointmentStatus.requested.name,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

@@ -81,6 +81,7 @@ export default function Appointments() {
       email,
       date: appt.date || '',
       time: appt.time || '',
+      note: appt.note || '',
       status: appt.status || 'requested',
     });
     setSaveError('');
@@ -104,6 +105,7 @@ export default function Appointments() {
         email: form.email.trim(),
         date: form.date.trim(),
         time: form.time.trim(),
+        note: form.note.trim(),
         status: form.status,
       });
     } catch (err) {
@@ -187,7 +189,13 @@ export default function Appointments() {
       {selected && form && (
         <aside className="drawer-panel" style={{ marginTop: 24 }}>
           <h2 className="agent-recent-title">{selected.appointmentId} — {selected.customer}</h2>
-          <p className="cell-muted" style={{ marginBottom: 16 }}>{selected.type} · {selected.note}</p>
+          <p className="cell-muted" style={{ marginBottom: 4 }}>{selected.type}</p>
+          {selected.productName && (
+            <p className="cell-muted" style={{ marginBottom: 4 }}>Product: <strong>{selected.productName}</strong></p>
+          )}
+          {selected.note && (
+            <p className="cell-muted" style={{ marginBottom: 16 }}>Note: {selected.note}</p>
+          )}
 
           <form onSubmit={handleSave} className="form-stack">
             <div className="form-row">
@@ -218,7 +226,7 @@ export default function Appointments() {
                   type="text"
                   value={form.date}
                   onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  placeholder="Jun 18, 2026"
+                  placeholder="e.g. 25/7/2026"
                 />
               </label>
               <label className="form-field">
@@ -227,10 +235,20 @@ export default function Appointments() {
                   type="text"
                   value={form.time}
                   onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                  placeholder="10:00"
+                  placeholder="e.g. 10:00 AM"
                 />
               </label>
             </div>
+
+            <label className="form-field">
+              <span>Notes</span>
+              <textarea
+                rows={3}
+                value={form.note}
+                onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                placeholder="Customer notes or requirements"
+              />
+            </label>
 
             <label className="form-field">
               <span>Status</span>
@@ -248,7 +266,7 @@ export default function Appointments() {
 
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <button type="submit" className="primary-btn" disabled={saving}>
-                {saving ? 'Saving…' : 'Save contact & schedule'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
               <button
                 type="button"
