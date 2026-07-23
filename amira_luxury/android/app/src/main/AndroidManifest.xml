@@ -3,6 +3,9 @@
          access in release builds. Flutter only adds this to the debug/profile
          manifests by default, so a release build needs it declared here. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Push notifications (Android 13+ runtime permission). Requested at
+         runtime by firebase_messaging when the app registers for pushes. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- gal: saving generated renders to the gallery on Android 9 and below. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
@@ -32,6 +35,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- FCM: the notification channel used for system-tray messages when the
+             payload doesn't specify one. Matches the channel created in
+             PushNotificationService (id "amira_default"). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="amira_default" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

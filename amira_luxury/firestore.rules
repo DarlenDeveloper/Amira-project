@@ -35,6 +35,12 @@ service cloud.firestore {
       match /notificationState/{docId} {
         allow read, write: if isOwner(uid);
       }
+
+      // FCM device tokens for push notifications. Owner writes/reads their own;
+      // Cloud Functions (Admin SDK) read them to target pushes.
+      match /fcmTokens/{token} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ── Visual Studio renders (top-level audit trail) ─────────────────────────

@@ -9,11 +9,16 @@
 //   firebase functions:secrets:set GEMINI_API_KEY
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import {
+  onDocumentCreated,
+  onDocumentUpdated,
+} from 'firebase-functions/v2/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 import { GoogleGenAI } from '@google/genai';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 
@@ -1323,5 +1328,164 @@ export const resetPasswordAfterPhoneVerification = onCall(
 
     await getAuth().updateUser(targetUid, { password: newPassword });
     return { success: true };
+  },
+);
+
+// ── Push notifications (FCM) ─────────────────────────────────────────────────
+//
+// Device tokens are stored per user under users/{uid}/fcmTokens/{token} by the
+// app. These triggers push to those tokens when an order/appointment status
+// changes, and to the `broadcast` topic when the admin sends a notification.
+//
+// Requires no secret — the Admin SDK is already initialised with the project's
+// default credentials.
+
+const NOTIF_REGION = 'us-central1';
+
+/**
+ * Sends a notification to every device token registered for a user. Prunes
+ * tokens the FCM backend reports as unregistered/invalid so the collection
+ * stays clean. No-ops when the user has no tokens.
+ */
+async function sendToUserTokens(db, uid, { title, body, data = {} }) {
+  if (!uid) return;
+  const snap = await db.collection('users').doc(uid).collection('fcmTokens').get();
+  const tokens = snap.docs.map((d) => d.id).filter(Boolean);
+  if (tokens.length === 0) return;
+
+  // Data values must be strings for FCM.
+  const stringData = Object.fromEntries(
+    Object.entries(data).map(([k, v]) => [k, String(v)]),
+  );
+
+  const res = await getMessaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data: stringData,
+    android: { priority: 'high', notification: { channelId: 'amira_default' } },
+    apns: { payload: { aps: { sound: 'default' } } },
+  });
+
+  // Remove tokens that are no longer valid.
+  const stale = [];
+  res.responses.forEach((r, i) => {
+    if (!r.success) {
+      const code = r.error?.code || '';
+      if (
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token' ||
+        code === 'messaging/invalid-argument'
+      ) {
+        stale.push(tokens[i]);
+      }
+    }
+  });
+  await Promise.all(
+    stale.map((t) =>
+      db.collection('users').doc(uid).collection('fcmTokens').doc(t).delete(),
+    ),
+  );
+}
+
+// Friendly per-status copy for order pushes.
+const ORDER_STATUS_MESSAGE = {
+  processing: 'Your order is being prepared.',
+  paid: 'Payment confirmed — thank you!',
+  shipped: 'Your order is on its way.',
+  delivered: 'Your order has been delivered. Enjoy!',
+  cancelled: 'Your order has been cancelled. Tap for details.',
+};
+
+const APPOINTMENT_STATUS_MESSAGE = {
+  confirmed: 'Your appointment has been confirmed.',
+  completed: 'Your appointment is complete. Thank you for visiting Amira.',
+  cancelled: 'Your appointment has been cancelled. Tap for details.',
+};
+
+// Order status change → push to the owner.
+export const onOrderStatusChange = onDocumentUpdated(
+  { document: 'orders/{orderId}', region: NOTIF_REGION },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+
+    const message = ORDER_STATUS_MESSAGE[after.status];
+    if (!message) return; // no push for pending/unknown transitions
+
+    const db = getFirestore();
+    const ref = after.orderId || event.params.orderId;
+    await sendToUserTokens(db, after.uid, {
+      title: `Order ${ref}`,
+      body: message,
+      data: { type: 'order', orderId: String(ref), status: String(after.status) },
+    });
+  },
+);
+
+// Appointment status change → push to the owner.
+export const onAppointmentStatusChange = onDocumentUpdated(
+  { document: 'appointments/{appointmentId}', region: NOTIF_REGION },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+
+    const message = APPOINTMENT_STATUS_MESSAGE[after.status];
+    if (!message) return;
+
+    const db = getFirestore();
+    const ref = after.appointmentId || event.params.appointmentId;
+    await sendToUserTokens(db, after.uid, {
+      title: after.type ? `${after.type}` : 'Appointment update',
+      body: message,
+      data: {
+        type: 'appointment',
+        appointmentId: String(ref),
+        status: String(after.status),
+      },
+    });
+  },
+);
+
+// Admin broadcast created → push to the matching audience.
+//   audience "all"        → topic `broadcast`
+//   audience "user:{uid}" → that user's device tokens
+export const onNotificationCreated = onDocumentCreated(
+  { document: 'notifications/{notificationId}', region: NOTIF_REGION },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const title = data.title || 'Amira Interiors';
+    const body = data.body || '';
+    const audience = String(data.audience || 'all').trim().toLowerCase();
+    const payload = {
+      type: String(data.type || 'collection'),
+      notificationId: event.params.notificationId,
+    };
+
+    if (audience === 'all' || audience === 'all users' || audience === 'all users & guests') {
+      const stringData = Object.fromEntries(
+        Object.entries(payload).map(([k, v]) => [k, String(v)]),
+      );
+      await getMessaging().send({
+        topic: 'broadcast',
+        notification: { title, body },
+        data: stringData,
+        android: { priority: 'high', notification: { channelId: 'amira_default' } },
+        apns: { payload: { aps: { sound: 'default' } } },
+      });
+      return;
+    }
+
+    if (audience.startsWith('user:')) {
+      const uid = audience.slice('user:'.length);
+      const db = getFirestore();
+      await sendToUserTokens(db, uid, { title, body, data: payload });
+    }
+    // Other audiences (e.g. "order:AM-10246") are not targeted for push here.
   },
 );

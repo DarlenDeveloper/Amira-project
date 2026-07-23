@@ -74,6 +74,13 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- Push notifications: allow the app to process incoming remote
+		     notifications (data messages / content-available) in the background. -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+			<string>fetch</string>
+		</array>
 		<!-- The app uses only standard HTTPS/TLS (Firebase) — exempt encryption.
 		     Declaring this skips the export-compliance prompt on every upload. -->
 		<key>ITSAppUsesNonExemptEncryption</key>

@@ -19,6 +19,17 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// share_plus 13.2.x assumes AGP 9's built-in Kotlin (it only applies the
+// standalone Kotlin plugin when AGP < 9, then configures KotlinAndroidProjectExtension
+// unconditionally). This project keeps android.builtInKotlin=false because every
+// other Flutter plugin applies the standalone Kotlin plugin, so we apply it to the
+// share_plus subproject here — before its build script configures the extension.
+subprojects {
+    if (name == "share_plus") {
+        pluginManager.apply("org.jetbrains.kotlin.android")
+    }
+}
+
 // FlutterFire plugins (firebase_core, cloud_firestore, firebase_auth, etc.) ship
 // a local-config.gradle that hardcodes compileSdk=34. This machine's android-34
 // platform is missing android.jar, so those plugins fail to compile. Force every

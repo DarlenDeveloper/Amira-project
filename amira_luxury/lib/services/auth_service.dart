@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/app_user.dart';
+import 'push_notification_service.dart';
 
 /// Central entry point for everything auth-related: email/password, Google,
 /// phone (OTP), password reset, sign-out, and the user's Firestore profile.
@@ -157,6 +158,9 @@ class AuthService {
 
   // ── Session ───────────────────────────────────────────────────────────────────
   Future<void> signOut() async {
+    // Drop this device's push token first so the signed-out user stops
+    // receiving targeted pushes on this device.
+    await PushNotificationService.instance.unregisterCurrentUser();
     if (_googleReady) {
       await GoogleSignIn.instance.signOut();
     }

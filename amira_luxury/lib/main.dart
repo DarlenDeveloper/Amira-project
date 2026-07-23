@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/visual_studio_screen.dart';
@@ -17,6 +19,11 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Push notifications: register the background handler before runApp (required
+  // by FCM) and set up the foreground channel / listeners. Per-user token
+  // registration happens once the user is signed in (see MainNavigator).
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await PushNotificationService.instance.init();
   // Debug-only: lets phone-auth OTP be tested on emulators without the Play
   // Integrity / reCAPTCHA app-verification gate that fails on non-genuine
   // devices. Release builds keep full verification — this never runs there.
@@ -118,6 +125,9 @@ class _MainNavigatorState extends State<MainNavigator> {
     _shell = AppShellController(
       onTabChange: (index) => _pageController.jumpToPage(index),
     );
+    // The user is signed in by the time the shell mounts — request the
+    // notification permission and register this device's FCM token.
+    PushNotificationService.instance.registerForCurrentUser();
   }
 
   @override
