@@ -1387,6 +1387,29 @@ async function sendToUserTokens(db, uid, { title, body, data = {} }) {
   );
 }
 
+/**
+ * Writes a per-user entry into the shared `notifications` collection so the
+ * event also appears on the app's in-app Notifications screen (which reads that
+ * collection and honours `audience: "user:{uid}"`). Marked `auto: true` so it
+ * can be told apart from admin-authored broadcasts.
+ *
+ * The app's notification tile picks its icon from `type`; supported values are
+ * "collection" | "offer" | "order" | "design" (anything else falls back to the
+ * neutral default icon).
+ */
+async function writeUserNotification(db, uid, { type, title, body, extra = {} }) {
+  if (!uid) return;
+  await db.collection('notifications').add({
+    type: type || 'collection',
+    title,
+    body,
+    audience: `user:${uid}`,
+    auto: true,
+    sentAt: FieldValue.serverTimestamp(),
+    ...extra,
+  });
+}
+
 // Friendly per-status copy for order pushes.
 const ORDER_STATUS_MESSAGE = {
   processing: 'Your order is being prepared.',
@@ -1416,10 +1439,19 @@ export const onOrderStatusChange = onDocumentUpdated(
 
     const db = getFirestore();
     const ref = after.orderId || event.params.orderId;
+    const title = `Order ${ref}`;
+
     await sendToUserTokens(db, after.uid, {
-      title: `Order ${ref}`,
+      title,
       body: message,
       data: { type: 'order', orderId: String(ref), status: String(after.status) },
+    });
+    // Also surface it on the app's in-app Notifications screen.
+    await writeUserNotification(db, after.uid, {
+      type: 'order',
+      title,
+      body: message,
+      extra: { orderId: String(ref), status: String(after.status) },
     });
   },
 );
@@ -1438,14 +1470,25 @@ export const onAppointmentStatusChange = onDocumentUpdated(
 
     const db = getFirestore();
     const ref = after.appointmentId || event.params.appointmentId;
+    const title = after.type ? `${after.type}` : 'Appointment update';
+
     await sendToUserTokens(db, after.uid, {
-      title: after.type ? `${after.type}` : 'Appointment update',
+      title,
       body: message,
       data: {
         type: 'appointment',
         appointmentId: String(ref),
         status: String(after.status),
       },
+    });
+    // Also surface it on the app's in-app Notifications screen. The app has no
+    // dedicated "appointment" icon, so use "order" — its check-mark styling
+    // reads well for confirmations/updates.
+    await writeUserNotification(db, after.uid, {
+      type: 'order',
+      title,
+      body: message,
+      extra: { appointmentId: String(ref), status: String(after.status) },
     });
   },
 );
@@ -1458,6 +1501,9 @@ export const onNotificationCreated = onDocumentCreated(
   async (event) => {
     const data = event.data?.data();
     if (!data) return;
+    // Auto-generated per-user docs (order/appointment updates) were already
+    // pushed by their own trigger — skip to avoid a duplicate push.
+    if (data.auto === true) return;
 
     const title = data.title || 'Amira Interiors';
     const body = data.body || '';
