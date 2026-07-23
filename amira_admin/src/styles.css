@@ -305,6 +305,15 @@ body { margin: 0; }
   transition: color 0.15s ease;
 }
 .icon-btn:hover { color: var(--ink); }
+/* Drop the default blue focus box; keep a branded, accessible ring for
+   keyboard navigation only (focus-visible), not on mouse click. */
+.icon-btn:focus { outline: none; }
+.icon-btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+  color: var(--ink);
+}
 
 .product-cell { display: flex; align-items: center; gap: 12px; }
 .product-thumb {
@@ -878,10 +887,9 @@ body { margin: 0; }
 /* ── Row "..." menu ───────────────────────────────────────────────────────── */
 .row-menu { position: relative; display: inline-flex; }
 .row-menu-pop {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 20;
+  /* Positioned via a fixed-position portal (see RowMenu.jsx) so it escapes the
+     table card / scroll wrapper overflow. */
+  z-index: 100;
   min-width: 140px;
   background: #fff;
   border: 1px solid #e8e8e2;
