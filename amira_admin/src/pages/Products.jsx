@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader.jsx';
 import FilterPills from '../components/FilterPills.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -6,11 +6,13 @@ import Thumb from '../components/Thumb.jsx';
 import RowMenu from '../components/RowMenu.jsx';
 import ProductForm from '../components/ProductForm.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import Pagination from '../components/Pagination.jsx';
 import { EyeIcon } from '../components/icons.jsx';
 import { useCollection, deleteDocById } from '../db.js';
 import { money } from '../utils.js';
 
 const STATUS_LABEL = { active: 'In stock', low: 'Low stock', out: 'Out of stock' };
+const PAGE_SIZE = 12;
 
 export default function Products() {
   const [filter, setFilter] = useState('all');
@@ -19,6 +21,7 @@ export default function Products() {
   // editing: undefined = closed, null = new, object = edit. deleting = product|null.
   const [editing, setEditing] = useState(undefined);
   const [deleting, setDeleting] = useState(null);
+  const [page, setPage] = useState(1);
 
   const categories = useMemo(
     () => [...new Set(products.map((p) => p.category).filter(Boolean))],
@@ -32,6 +35,15 @@ export default function Products() {
   }, [products, categories]);
 
   const rows = filter === 'all' ? products : products.filter((p) => p.category === filter);
+
+  // Reset to the first page whenever the filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const options = [
     { value: 'all', label: 'All' },
@@ -67,7 +79,7 @@ export default function Products() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {pageRows.map((p) => (
               <tr key={p.id}>
                 <td>
                   <div className="product-cell">
@@ -93,6 +105,14 @@ export default function Products() {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        page={safePage}
+        totalPages={totalPages}
+        totalItems={rows.length}
+        pageSize={PAGE_SIZE}
+        onChange={setPage}
+      />
 
       {editing !== undefined && (
         <ProductForm
