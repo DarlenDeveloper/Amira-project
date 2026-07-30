@@ -11,7 +11,7 @@ function lineTotal(item) {
   return (Number(item.value) || 0) * (Number(item.qty) || 0);
 }
 
-export default function OrderDetailModal({ order, onClose }) {
+export default function OrderDetailModal({ order, onClose, onDelete }) {
   if (!order) return null;
 
   const items = Array.isArray(order.items) ? order.items : [];
@@ -29,9 +29,19 @@ export default function OrderDetailModal({ order, onClose }) {
       title={order.orderId || order.id}
       onClose={onClose}
       footer={(
-        <button type="button" className="ghost-btn" onClick={onClose}>
-          Close
-        </button>
+        <>
+          <button
+            type="button"
+            className="danger-btn"
+            style={{ marginRight: 'auto' }}
+            onClick={() => onDelete(order)}
+          >
+            Delete order
+          </button>
+          <button type="button" className="ghost-btn" onClick={onClose}>
+            Close
+          </button>
+        </>
       )}
     >
       <div className="order-detail">

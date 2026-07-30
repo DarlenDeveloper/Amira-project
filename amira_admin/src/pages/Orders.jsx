@@ -3,8 +3,9 @@ import PageHeader from '../components/PageHeader.jsx';
 import FilterPills from '../components/FilterPills.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import OrderDetailModal from '../components/OrderDetailModal.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { EyeIcon } from '../components/icons.jsx';
-import { useCollection, formatDate } from '../db.js';
+import { useCollection, deleteDocById, formatDate } from '../db.js';
 import { money, titleCase } from '../utils.js';
 
 const ORDER_STATUSES = [
@@ -14,6 +15,7 @@ const ORDER_STATUSES = [
 export default function Orders() {
   const [filter, setFilter] = useState('all');
   const [activeId, setActiveId] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const { data } = useCollection('orders');
 
   const orders = useMemo(() => {
@@ -107,6 +109,20 @@ export default function Orders() {
         <OrderDetailModal
           order={active}
           onClose={() => setActiveId(null)}
+          onDelete={setDeleting}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete order"
+          message={`Permanently delete order "${deleting.orderId || deleting.id}"? This cannot be undone.`}
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            await deleteDocById('orders', deleting.id);
+            setDeleting(null);
+            setActiveId(null);
+          }}
         />
       )}
     </div>
