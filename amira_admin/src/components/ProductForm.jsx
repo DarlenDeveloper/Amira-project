@@ -63,6 +63,9 @@ function initialImages(initial) {
 
 export default function ProductForm({ initial, categories = [], onClose, onSaved }) {
   const isEdit = Boolean(initial?.id);
+  const initialCategoryIsOther = Boolean(
+    initial?.category && !categories.includes(initial.category),
+  );
   const [form, setForm] = useState({
     name: initial?.name ?? '',
     category: initial?.category ?? '',
@@ -77,6 +80,9 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
     desc: initial?.desc ?? '',
     about: initial?.about ?? '',
   });
+  const [categoryChoice, setCategoryChoice] = useState(
+    initialCategoryIsOther ? '__other__' : (initial?.category ?? ''),
+  );
   // Ordered gallery; first item is the primary image.
   const [images, setImages] = useState(() => initialImages(initial));
   const [colors, setColors] = useState(() => initialColors(initial));
@@ -84,6 +90,12 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
   const [error, setError] = useState('');
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const changeCategory = (e) => {
+    const value = e.target.value;
+    setCategoryChoice(value);
+    setForm((f) => ({ ...f, category: value === '__other__' ? '' : value }));
+  };
 
   const addFiles = (e) => {
     const files = Array.from(e.target.files ?? []);
@@ -135,6 +147,7 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return setError('Name is required.');
+    if (!form.category.trim()) return setError('Category is required.');
     if (form.value === '' || Number.isNaN(Number(form.value)))
       return setError('Enter a valid price.');
     setError('');
@@ -257,17 +270,21 @@ export default function ProductForm({ initial, categories = [], onClose, onSaved
         <div className="form-row">
           <label className="form-field">
             <span>Category</span>
-            <input
-              value={form.category}
-              onChange={set('category')}
-              placeholder="Wall Panels"
-              list="category-options"
-            />
-            <datalist id="category-options">
+            <select value={categoryChoice} onChange={changeCategory}>
+              <option value="" disabled>Select a category</option>
               {categories.map((c) => (
-                <option key={c} value={c} />
+                <option key={c} value={c}>{c}</option>
               ))}
-            </datalist>
+              <option value="__other__">Other</option>
+            </select>
+            {categoryChoice === '__other__' && (
+              <input
+                value={form.category}
+                onChange={set('category')}
+                placeholder="Enter a new category"
+                autoFocus
+              />
+            )}
           </label>
           <label className="form-field">
             <span>Tag / badge</span>

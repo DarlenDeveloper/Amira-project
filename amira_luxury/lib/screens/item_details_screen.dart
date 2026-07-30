@@ -24,22 +24,41 @@ class ItemDetailsScreen extends StatefulWidget {
 
 class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   int _qty = 1;
+  int _imagePage = 0;
   ProductColor? _selectedColor;
+  late final Stream<Product?> _productStream;
 
   Product get _product => widget.product;
   double get _total => _product.value * _qty;
   bool get _hasColors => _product.colors.isNotEmpty;
 
+  List<String> _galleryImages(Product product) {
+    final seen = <String>{};
+    final images = <String>[];
+    for (final url in product.images) {
+      if (url.isNotEmpty && seen.add(url)) images.add(url);
+    }
+    final primary = product.imageUrl;
+    if (primary != null && primary.isNotEmpty && seen.add(primary)) {
+      images.insert(0, primary);
+    }
+    return images;
+  }
+
   @override
   void initState() {
     super.initState();
+    _productStream = ProductService.instance.watchProduct(_product.id);
     _selectedColor = _product.colors.isNotEmpty ? _product.colors.first : null;
   }
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+        content: Text(
+          msg,
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans'),
+        ),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1400),
@@ -62,7 +81,9 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
       color: _selectedColor,
     );
     if (!mounted) return;
-    final colorNote = _selectedColor != null ? ' (${_selectedColor!.name})' : '';
+    final colorNote = _selectedColor != null
+        ? ' (${_selectedColor!.name})'
+        : '';
     _snack('Added $_qty × ${_product.name}$colorNote to cart');
   }
 
@@ -79,7 +100,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Product?>(
-      stream: ProductService.instance.watchProduct(_product.id),
+      stream: _productStream,
       builder: (context, snapshot) {
         final product = snapshot.data ?? _product;
         return _buildScaffold(context, product);
@@ -88,6 +109,8 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   }
 
   Widget _buildScaffold(BuildContext context, Product product) {
+    final galleryImages = _galleryImages(product);
+    final activeImagePage = _imagePage < galleryImages.length ? _imagePage : 0;
     return Scaffold(
       backgroundColor: _bg,
       body: Column(
@@ -101,7 +124,10 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                   // Image with overlaid back + favourite + cart
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                      16, MediaQuery.of(context).padding.top + 12, 16, 0,
+                      16,
+                      MediaQuery.of(context).padding.top + 12,
+                      16,
+                      0,
                     ),
                     child: Stack(
                       children: [
@@ -110,9 +136,16 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                           child: SizedBox(
                             height: MediaQuery.of(context).size.height * 0.48,
                             width: double.infinity,
-                            child: ProductImage(
-                              imageUrl: product.imageUrl,
-                            ),
+                            child: galleryImages.isEmpty
+                                ? const ProductImage(imageUrl: null)
+                                : PageView.builder(
+                                    itemCount: galleryImages.length,
+                                    onPageChanged: (page) =>
+                                        setState(() => _imagePage = page),
+                                    itemBuilder: (_, index) => ProductImage(
+                                      imageUrl: galleryImages[index],
+                                    ),
+                                  ),
                           ),
                         ),
                         Positioned(
@@ -134,7 +167,10 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                             bottom: 16,
                             left: 16,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: _gold,
                                 borderRadius: BorderRadius.circular(20),
@@ -147,6 +183,38 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                   color: _white,
                                   fontFamily: 'Plus Jakarta Sans',
                                   letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (galleryImages.length > 1)
+                          Positioned(
+                            bottom: 18,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                galleryImages.length,
+                                (index) => AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: index == activeImagePage ? 20 : 7,
+                                  height: 7,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: index == activeImagePage
+                                        ? _white
+                                        : _white.withValues(alpha: 0.55),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x40000000),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -220,8 +288,11 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                       child: Row(
                         children: [
-                          const Icon(Icons.straighten_rounded,
-                              size: 16, color: _grey),
+                          const Icon(
+                            Icons.straighten_rounded,
+                            size: 16,
+                            color: _grey,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -288,7 +359,9 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 color: _white,
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: active ? _gold : const Color(0xFFE4E4DE),
+                                  color: active
+                                      ? _gold
+                                      : const Color(0xFFE4E4DE),
                                   width: active ? 2 : 1.5,
                                 ),
                                 boxShadow: active
@@ -373,7 +446,10 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        20, 18, 20, 18 + MediaQuery.of(context).padding.bottom,
+        20,
+        18,
+        20,
+        18 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: _white,
@@ -420,10 +496,12 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
               GestureDetector(
                 onTap: () {
                   final p = _product;
-                  final url = 'https://amirainteriors.com/shop-2/?product=${p.id}';
+                  final url =
+                      'https://amirainteriors.com/shop-2/?product=${p.id}';
                   SharePlus.instance.share(
                     ShareParams(
-                      text: 'Check out ${p.name} on Amira Interiors — ${formatUgx(p.value)} / ${p.unit}\n$url',
+                      text:
+                          'Check out ${p.name} on Amira Interiors — ${formatUgx(p.value)} / ${p.unit}\n$url',
                     ),
                   );
                 },
@@ -641,13 +719,13 @@ class _SlideToActionState extends State<_SlideToAction> {
   }
 }
 
-
 class _AppointmentBookingForm extends StatefulWidget {
   final Product product;
   const _AppointmentBookingForm({required this.product});
 
   @override
-  State<_AppointmentBookingForm> createState() => _AppointmentBookingFormState();
+  State<_AppointmentBookingForm> createState() =>
+      _AppointmentBookingFormState();
 }
 
 class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
@@ -722,7 +800,12 @@ class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Container(
-        padding: EdgeInsets.fromLTRB(24, 32, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          32,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
         decoration: const BoxDecoration(
           color: _bg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -735,12 +818,24 @@ class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Book Appointment', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: _dark, fontFamily: 'Plus Jakarta Sans')),
+                  const Text(
+                    'Book Appointment',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
                     child: Container(
-                      width: 36, height: 36,
-                      decoration: const BoxDecoration(color: _white, shape: BoxShape.circle),
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: _white,
+                        shape: BoxShape.circle,
+                      ),
                       child: const Icon(Icons.close, size: 20, color: _dark),
                     ),
                   ),
@@ -749,27 +844,68 @@ class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
               const SizedBox(height: 8),
               Text(
                 'Booking for ${widget.product.name}',
-                style: const TextStyle(fontSize: 14, color: _grey, fontFamily: 'Plus Jakarta Sans'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: _grey,
+                  fontFamily: 'Plus Jakarta Sans',
+                ),
               ),
               const SizedBox(height: 24),
-              _field('Preferred Date', _dateCtrl, Icons.calendar_today_outlined,
-                  hint: 'e.g. 25 July 2026', readOnly: true, onTap: _pickDate, required: true),
+              _field(
+                'Preferred Date',
+                _dateCtrl,
+                Icons.calendar_today_outlined,
+                hint: 'e.g. 25 July 2026',
+                readOnly: true,
+                onTap: _pickDate,
+                required: true,
+              ),
               const SizedBox(height: 16),
-              _field('Preferred Time', _timeCtrl, Icons.access_time_outlined,
-                  hint: 'e.g. 10:00 AM', readOnly: true, onTap: _pickTime, required: true),
+              _field(
+                'Preferred Time',
+                _timeCtrl,
+                Icons.access_time_outlined,
+                hint: 'e.g. 10:00 AM',
+                readOnly: true,
+                onTap: _pickTime,
+                required: true,
+              ),
               const SizedBox(height: 16),
-              _field('Notes', _noteCtrl, Icons.notes_outlined,
-                  hint: 'Any specific requirements or questions? (optional)', maxLines: 3),
+              _field(
+                'Notes',
+                _noteCtrl,
+                Icons.notes_outlined,
+                hint: 'Any specific requirements or questions? (optional)',
+                maxLines: 3,
+              ),
               const SizedBox(height: 32),
               GestureDetector(
                 onTap: _busy ? null : _submit,
                 child: Container(
                   height: 56,
-                  decoration: BoxDecoration(color: _dark, borderRadius: BorderRadius.circular(28)),
+                  decoration: BoxDecoration(
+                    color: _dark,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
                   alignment: Alignment.center,
                   child: _busy
-                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(_white)))
-                      : const Text('Confirm Booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _white, fontFamily: 'Plus Jakarta Sans')),
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(_white),
+                          ),
+                        )
+                      : const Text(
+                          'Confirm Booking',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: _white,
+                            fontFamily: 'Plus Jakarta Sans',
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -779,17 +915,46 @@ class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl, IconData icon, {String hint = '', bool required = false, bool readOnly = false, VoidCallback? onTap, TextInputType keyboard = TextInputType.text, int maxLines = 1}) {
+  Widget _field(
+    String label,
+    TextEditingController ctrl,
+    IconData icon, {
+    String hint = '',
+    bool required = false,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    TextInputType keyboard = TextInputType.text,
+    int maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${label.toUpperCase()}${required ? ' *' : ''}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _grey, fontFamily: 'Plus Jakarta Sans', letterSpacing: 0.8)),
+        Text(
+          '${label.toUpperCase()}${required ? ' *' : ''}',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: _grey,
+            fontFamily: 'Plus Jakarta Sans',
+            letterSpacing: 0.8,
+          ),
+        ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(color: _white, borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))]),
+            decoration: BoxDecoration(
+              color: _white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Icon(icon, size: 20, color: _grey),
@@ -801,11 +966,22 @@ class _AppointmentBookingFormState extends State<_AppointmentBookingForm> {
                     keyboardType: keyboard,
                     maxLines: maxLines,
                     onTap: onTap,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _dark, fontFamily: 'Plus Jakarta Sans'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: _dark,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
                     decoration: InputDecoration(
                       hintText: hint,
-                      hintStyle: const TextStyle(color: Color(0xFFB8B8B8), fontSize: 14, fontFamily: 'Plus Jakarta Sans'),
-                      border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero,
+                      hintStyle: const TextStyle(
+                        color: Color(0xFFB8B8B8),
+                        fontSize: 14,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),

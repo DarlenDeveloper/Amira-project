@@ -37,6 +37,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int _visibleCount = _pageSize;
   int _filteredTotal = 0;
   final ScrollController _gridController = ScrollController();
+  late final Stream<List<Product>> _productsStream;
+  late final Stream<Set<String>> _favouritesStream;
 
   // Coachmark anchors + trigger state.
   final GlobalKey _tipCartKey = GlobalKey();
@@ -48,6 +50,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    // Keep stream identities stable across pagination/filter setState calls.
+    // Recreating them in build briefly put StreamBuilder back into its waiting
+    // state, replacing the grid and resetting its scroll position.
+    _productsStream = ProductService.instance.watchProducts();
+    _favouritesStream = ShopService.instance.watchFavouriteIds();
     _gridController.addListener(_onGridScroll);
   }
 
@@ -61,8 +68,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void _revealMore() {
     if (_visibleCount >= _filteredTotal) return;
     setState(() {
-      _visibleCount =
-          (_visibleCount + _pageSize).clamp(0, _filteredTotal).toInt();
+      _visibleCount = (_visibleCount + _pageSize)
+          .clamp(0, _filteredTotal)
+          .toInt();
     });
   }
 
@@ -112,31 +120,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (!mounted) return;
     await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
-    Coachmarks.show(
-      context,
-      [
-        CoachStep(
-          targetKey: _tipCartKey,
-          title: 'Your cart',
-          body: 'Items you add are collected here — review them and check out.',
-          radius: 24,
-        ),
-        CoachStep(
-          targetKey: _tipFilterKey,
-          title: 'Filter materials',
-          body: 'Narrow the catalogue by material type.',
-          radius: 24,
-        ),
-        CoachStep(
-          targetKey: _tipGridKey,
-          title: 'Browse & act',
-          body:
-              'Tap a material for full details — or long-press for quick options: visualise it with AI, or ask Amira about it.',
-          radius: 22,
-        ),
-      ],
-      onFinish: () => prefs.setBool('coach_explore_v1', true),
-    );
+    Coachmarks.show(context, [
+      CoachStep(
+        targetKey: _tipCartKey,
+        title: 'Your cart',
+        body: 'Items you add are collected here — review them and check out.',
+        radius: 24,
+      ),
+      CoachStep(
+        targetKey: _tipFilterKey,
+        title: 'Filter materials',
+        body: 'Narrow the catalogue by material type.',
+        radius: 24,
+      ),
+      CoachStep(
+        targetKey: _tipGridKey,
+        title: 'Browse & act',
+        body:
+            'Tap a material for full details — or long-press for quick options: visualise it with AI, or ask Amira about it.',
+        radius: 22,
+      ),
+    ], onFinish: () => prefs.setBool('coach_explore_v1', true));
   }
 
   @override
@@ -148,7 +152,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
           // Fixed header: title + cart button
           Padding(
             padding: EdgeInsets.fromLTRB(
-                20, MediaQuery.of(context).padding.top + 16, 20, 0),
+              20,
+              MediaQuery.of(context).padding.top + 16,
+              20,
+              0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -173,8 +181,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(Icons.shopping_cart_rounded,
-                          color: _dark, size: 26),
+                      const Icon(
+                        Icons.shopping_cart_rounded,
+                        color: _dark,
+                        size: 26,
+                      ),
                       StreamBuilder<List<CartLine>>(
                         stream: ShopService.instance.watchCart(),
                         builder: (context, snapshot) {
@@ -220,7 +231,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           // both fed by the same products stream so the filter actually applies.
           Expanded(
             child: StreamBuilder<List<Product>>(
-              stream: ProductService.instance.watchProducts(),
+              stream: _productsStream,
               builder: (context, snapshot) {
                 final loading =
                     snapshot.connectionState == ConnectionState.waiting;
@@ -230,8 +241,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ...ProductService.instance.categoriesOf(products),
                 ];
                 // Keep the selection valid as the live category set changes.
-                final selected =
-                    categories.contains(_selectedCategory) ? _selectedCategory : 'ALL';
+                final selected = categories.contains(_selectedCategory)
+                    ? _selectedCategory
+                    : 'ALL';
                 final filtered = selected == 'ALL'
                     ? products
                     : products.where((p) => p.category == selected).toList();
@@ -254,7 +266,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             child: Container(
                               margin: const EdgeInsets.only(right: 12),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
                                 color: isActive
                                     ? Colors.black
@@ -292,7 +306,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: loading
                           ? const _SkeletonGrid()
                           : StreamBuilder<Set<String>>(
-                              stream: ShopService.instance.watchFavouriteIds(),
+                              stream: _favouritesStream,
                               builder: (context, favSnap) {
                                 final favourites =
                                     favSnap.data ?? const <String>{};
@@ -320,38 +334,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   slivers: [
                                     SliverPadding(
                                       padding: EdgeInsets.fromLTRB(
-                                          20, 0, 20, hasMore ? 8 : 120),
+                                        20,
+                                        0,
+                                        20,
+                                        hasMore ? 8 : 120,
+                                      ),
                                       sliver: SliverGrid(
                                         gridDelegate:
                                             const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 2,
-                                          crossAxisSpacing: 16,
-                                          mainAxisSpacing: 22,
-                                          childAspectRatio: 0.66,
-                                        ),
-                                        delegate: SliverChildBuilderDelegate(
-                                          (_, i) {
-                                            final card = _MaterialCard(
-                                              product: filtered[i],
-                                              isFavourite: favourites
-                                                  .contains(filtered[i].id),
-                                            );
-                                            // Anchor the first card for the coachmark.
-                                            return i == 0
-                                                ? KeyedSubtree(
-                                                    key: _tipGridKey,
-                                                    child: card)
-                                                : card;
-                                          },
-                                          childCount: visible,
-                                        ),
+                                              crossAxisCount: 2,
+                                              crossAxisSpacing: 16,
+                                              mainAxisSpacing: 22,
+                                              childAspectRatio: 0.66,
+                                            ),
+                                        delegate: SliverChildBuilderDelegate((
+                                          _,
+                                          i,
+                                        ) {
+                                          final card = _MaterialCard(
+                                            product: filtered[i],
+                                            isFavourite: favourites.contains(
+                                              filtered[i].id,
+                                            ),
+                                          );
+                                          // Anchor the first card for the coachmark.
+                                          return i == 0
+                                              ? KeyedSubtree(
+                                                  key: _tipGridKey,
+                                                  child: card,
+                                                )
+                                              : card;
+                                        }, childCount: visible),
                                       ),
                                     ),
                                     if (hasMore)
                                       const SliverToBoxAdapter(
                                         child: Padding(
                                           padding: EdgeInsets.fromLTRB(
-                                              20, 12, 20, 120),
+                                            20,
+                                            12,
+                                            20,
+                                            120,
+                                          ),
                                           child: Center(
                                             child: SizedBox(
                                               width: 26,
@@ -410,21 +434,22 @@ class _MaterialCard extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(Iconsax.magic_star5, color: _gold),
-                  title: const Text('Visualise with AI',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  title: const Text(
+                    'Visualise with AI',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans'),
+                  ),
                   onTap: () {
                     final shell = AppShellController.of(context);
                     Navigator.of(ctx).pop();
-                    shell.openVisualStudio(
-                      product: product,
-                      source: 'explore',
-                    );
+                    shell.openVisualStudio(product: product, source: 'explore');
                   },
                 ),
                 ListTile(
                   leading: const Icon(Iconsax.message_text5, color: _gold),
-                  title: const Text('Ask Amira about this',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  title: const Text(
+                    'Ask Amira about this',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans'),
+                  ),
                   onTap: () {
                     final shell = AppShellController.of(context);
                     Navigator.of(ctx).pop();
@@ -468,7 +493,9 @@ class _MaterialCard extends StatelessWidget {
                     left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: _white.withOpacity(0.92),
                         borderRadius: BorderRadius.circular(30),
@@ -491,8 +518,10 @@ class _MaterialCard extends StatelessWidget {
                   top: 12,
                   right: 12,
                   child: GestureDetector(
-                    onTap: () => ShopService.instance
-                        .setFavourite(product.id, !isFavourite),
+                    onTap: () => ShopService.instance.setFavourite(
+                      product.id,
+                      !isFavourite,
+                    ),
                     behavior: HitTestBehavior.opaque,
                     child: Container(
                       width: 38,
