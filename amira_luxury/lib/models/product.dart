@@ -88,6 +88,18 @@ class Product {
   bool get isOutOfStock => status == ProductStatus.out || stock <= 0;
   bool get isLowStock => status == ProductStatus.low;
 
+  /// Every hosted image available for this product, with the primary image
+  /// first and duplicates/blank values removed.
+  List<String> get displayImageUrls {
+    final urls = <String>[];
+    final seen = <String>{};
+    for (final url in <String>[?imageUrl, ...images]) {
+      final trimmed = url.trim();
+      if (trimmed.isNotEmpty && seen.add(trimmed)) urls.add(trimmed);
+    }
+    return urls;
+  }
+
   factory Product.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const {};
     return Product(
@@ -95,8 +107,8 @@ class Product {
       name: (data['name'] as String?) ?? '',
       imageKey: (data['imageKey'] as String?) ?? '',
       imageUrl: data['imageUrl'] as String?,
-      images: (data['images'] as List?)?.whereType<String>().toList() ??
-          const [],
+      images:
+          (data['images'] as List?)?.whereType<String>().toList() ?? const [],
       category: (data['category'] as String?) ?? '',
       value: (data['value'] as num?)?.toDouble() ?? 0,
       unit: (data['unit'] as String?) ?? 'unit',

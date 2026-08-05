@@ -113,31 +113,28 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
     if (!mounted || _disposed) return;
     await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted || _disposed) return;
-    Coachmarks.show(
-      context,
-      [
-        CoachStep(
-          targetKey: _tipUploadKey,
-          title: 'Start with your room',
-          body: 'Upload or take a photo of the space you want to redesign.',
-          radius: 30,
-        ),
-        CoachStep(
-          targetKey: _tipDescKey,
-          title: 'Choose your mode',
-          body: 'Standard installs materials as-is. Enhance adds professional lighting and integration.',
-          radius: 28,
-        ),
-        CoachStep(
-          targetKey: _tipMaterialsKey,
-          title: 'Choose materials',
-          body:
-              'Add the Amira finishes to place in your room, then generate your render.',
-          radius: 20,
-        ),
-      ],
-      onFinish: () => prefs.setBool('coach_studio_v1', true),
-    );
+    Coachmarks.show(context, [
+      CoachStep(
+        targetKey: _tipUploadKey,
+        title: 'Start with your room',
+        body: 'Upload or take a photo of the space you want to redesign.',
+        radius: 30,
+      ),
+      CoachStep(
+        targetKey: _tipDescKey,
+        title: 'Choose your mode',
+        body:
+            'Standard installs materials as-is. Enhance adds professional lighting and integration.',
+        radius: 28,
+      ),
+      CoachStep(
+        targetKey: _tipMaterialsKey,
+        title: 'Choose materials',
+        body:
+            'Add the Amira finishes to place in your room, then generate your render.',
+        radius: 20,
+      ),
+    ], onFinish: () => prefs.setBool('coach_studio_v1', true));
   }
 
   void _applyShellIntent() {
@@ -165,7 +162,10 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+        content: Text(
+          msg,
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans'),
+        ),
         backgroundColor: _dark,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1600),
@@ -215,9 +215,18 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            _sourceTile(ctx, Iconsax.camera5, 'Take a photo', ImageSource.camera),
-            _sourceTile(ctx, Iconsax.gallery5, 'Choose from gallery',
-                ImageSource.gallery),
+            _sourceTile(
+              ctx,
+              Iconsax.camera5,
+              'Take a photo',
+              ImageSource.camera,
+            ),
+            _sourceTile(
+              ctx,
+              Iconsax.gallery5,
+              'Choose from gallery',
+              ImageSource.gallery,
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -226,7 +235,11 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
   }
 
   Widget _sourceTile(
-      BuildContext ctx, IconData icon, String label, ImageSource source) {
+    BuildContext ctx,
+    IconData icon,
+    String label,
+    ImageSource source,
+  ) {
     return ListTile(
       leading: Icon(icon, color: _gold),
       title: Text(
@@ -426,7 +439,10 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
           builder: (_, scrollCtrl) {
             return Padding(
               padding: EdgeInsets.fromLTRB(
-                20, 20, 20, 20 + MediaQuery.of(ctx).padding.bottom,
+                20,
+                20,
+                20,
+                20 + MediaQuery.of(ctx).padding.bottom,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,7 +480,9 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                             maxMaterials: _maxMaterials,
                             onSelect: (product) {
                               if (_selected.length >= _maxMaterials) {
-                                _snack('You can add up to $_maxMaterials materials per render.');
+                                _snack(
+                                  'You can add up to $_maxMaterials materials per render.',
+                                );
                                 return;
                               }
                               setState(() => _selected.add(product));
@@ -490,299 +508,342 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
       child: Scaffold(
         backgroundColor: _bg,
         body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 40, 20, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_picked == null) ...[
-                // Upload Drop Zone (tap to choose camera / gallery)
-                GestureDetector(
-                  key: _tipUploadKey,
-                  onTap: _chooseSource,
-                  child: Container(
-                  height: 380,
-                  decoration: BoxDecoration(
-                    color: _white,
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(
-                      color: _lightGrey,
-                      width: 2,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Spacer(),
-                      // Gold circle with upload icon
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: _lightGold,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withOpacity(0.15),
-                              blurRadius: 30,
-                              spreadRadius: 10,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Iconsax.arrow_up_3,
-                          color: _gold,
-                          size: 48,
-                        ),
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 40, 20, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_picked == null) ...[
+                  // Upload Drop Zone (tap to choose camera / gallery)
+                  GestureDetector(
+                    key: _tipUploadKey,
+                    onTap: _chooseSource,
+                    child: Container(
+                      height: 380,
+                      decoration: BoxDecoration(
+                        color: _white,
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(color: _lightGrey, width: 2),
                       ),
-                      const Spacer(),
-                      // Text
-                      const Text(
-                        'Drop your room image',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: _dark,
-                          fontFamily: 'Plus Jakarta Sans',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'For best results, image uploads should be at least\n1080p (1920 x 1080 pixels) in JPG or PNG format.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: _grey,
-                          fontFamily: 'Plus Jakarta Sans',
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-                ),
-              ] else ...[
-                // Selected room photo — preview + upload state
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: _white,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.file(
-                              File(_picked!.path),
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _picked!.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: _dark,
-                                    fontFamily: 'Plus Jakarta Sans',
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _uploadedUrl != null
-                                      ? '${_formatSize(_fileBytes)} • Uploaded'
-                                      : _uploading
-                                          ? '${_formatSize(_fileBytes)} • ${(_progress * 100).round()}%'
-                                          : '${_formatSize(_fileBytes)} • Ready to upload',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                    color: _grey,
-                                    fontFamily: 'Plus Jakarta Sans',
-                                  ),
+                          const Spacer(),
+                          // Gold circle with upload icon
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: _lightGold,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _gold.withOpacity(0.15),
+                                  blurRadius: 30,
+                                  spreadRadius: 10,
                                 ),
                               ],
                             ),
-                          ),
-                          GestureDetector(
-                            onTap: _clearPhoto,
                             child: Icon(
-                              _uploadedUrl != null
-                                  ? Icons.check_circle_rounded
-                                  : Icons.close,
-                              color: _uploadedUrl != null ? _gold : _grey,
-                              size: 24,
+                              Iconsax.arrow_up_3,
+                              color: _gold,
+                              size: 48,
                             ),
                           ),
-                        ],
-                      ),
-                      if (_uploading || _uploadedUrl != null) ...[
-                        const SizedBox(height: 20),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: _uploadedUrl != null ? 1 : _progress,
-                            minHeight: 8,
-                            backgroundColor: _lightGrey,
-                            valueColor:
-                                const AlwaysStoppedAnimation<Color>(_gold),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-
-              // AI result / generating state
-              if (_generating || _resultUrl != null) ...[
-                const SizedBox(height: 20),
-                if (_generating)
-                  const _ShimmerLoading(height: 320)
-                else
-                  GestureDetector(
-                    onTap: () => _openFullScreen(_resultUrl!),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Hero(
-                            tag: 'render-result',
-                            child: CachedNetworkImage(
-                              imageUrl: _resultUrl!,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  const _ShimmerLoading(height: 300),
-                              errorWidget: (context, url, error) => Container(
-                                height: 300,
-                                color: const Color(0xFFEDEDE8),
-                                child: const Center(
-                                  child: Icon(Icons.broken_image_rounded,
-                                      size: 40, color: Color(0xFFB8B8B2)),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Subtle "tap to expand" affordance.
-                        Positioned(
-                          right: 12,
-                          bottom: 12,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.45),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
-                              Icons.fullscreen_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_resultUrl != null && !_generating) ...[
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: _saving ? null : _saveResult,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: _white,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: _lightGrey, width: 1.5),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: _saving
-                                ? const CircularProgressIndicator(
-                                    color: _gold, strokeWidth: 2)
-                                : const Icon(Icons.download_rounded,
-                                    size: 18, color: _gold),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _saving ? 'Saving…' : 'Save to device',
-                            style: const TextStyle(
-                              fontSize: 14,
+                          const Spacer(),
+                          // Text
+                          const Text(
+                            'Drop your room image',
+                            style: TextStyle(
+                              fontSize: 22,
                               fontWeight: FontWeight.w600,
                               color: _dark,
                               fontFamily: 'Plus Jakarta Sans',
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'For best results, image uploads should be at least\n1080p (1920 x 1080 pixels) in JPG or PNG format.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: _grey,
+                              fontFamily: 'Plus Jakarta Sans',
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ],
-
-              // Result actions
-              if (_resultUrl != null && _selected.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _addSelectedToCart,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: _dark,
-                            borderRadius: BorderRadius.circular(28),
+                ] else ...[
+                  // Selected room photo — preview + upload state
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: _white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.file(
+                                File(_picked!.path),
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _picked!.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: _dark,
+                                      fontFamily: 'Plus Jakarta Sans',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _uploadedUrl != null
+                                        ? '${_formatSize(_fileBytes)} • Uploaded'
+                                        : _uploading
+                                        ? '${_formatSize(_fileBytes)} • ${(_progress * 100).round()}%'
+                                        : '${_formatSize(_fileBytes)} • Ready to upload',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: _grey,
+                                      fontFamily: 'Plus Jakarta Sans',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _clearPhoto,
+                              child: Icon(
+                                _uploadedUrl != null
+                                    ? Icons.check_circle_rounded
+                                    : Icons.close,
+                                color: _uploadedUrl != null ? _gold : _grey,
+                                size: 24,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_uploading || _uploadedUrl != null) ...[
+                          const SizedBox(height: 20),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: _uploadedUrl != null ? 1 : _progress,
+                              minHeight: 8,
+                              backgroundColor: _lightGrey,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                _gold,
+                              ),
+                            ),
                           ),
-                          child: const Center(
-                            child: Text(
-                              'Add to cart',
-                              style: TextStyle(
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+
+                // AI result / generating state
+                if (_generating || _resultUrl != null) ...[
+                  const SizedBox(height: 20),
+                  if (_generating)
+                    const _ShimmerLoading(height: 320)
+                  else
+                    GestureDetector(
+                      onTap: () => _openFullScreen(_resultUrl!),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Hero(
+                              tag: 'render-result',
+                              child: CachedNetworkImage(
+                                imageUrl: _resultUrl!,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    const _ShimmerLoading(height: 300),
+                                errorWidget: (context, url, error) => Container(
+                                  height: 300,
+                                  color: const Color(0xFFEDEDE8),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.broken_image_rounded,
+                                      size: 40,
+                                      color: Color(0xFFB8B8B2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Subtle "tap to expand" affordance.
+                          Positioned(
+                            right: 12,
+                            bottom: 12,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.45),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                Icons.fullscreen_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_resultUrl != null && !_generating) ...[
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _saving ? null : _saveResult,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _white,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: _lightGrey, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: _saving
+                                  ? const CircularProgressIndicator(
+                                      color: _gold,
+                                      strokeWidth: 2,
+                                    )
+                                  : const Icon(
+                                      Icons.download_rounded,
+                                      size: 18,
+                                      color: _gold,
+                                    ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _saving ? 'Saving…' : 'Save to device',
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: _white,
+                                color: _dark,
                                 fontFamily: 'Plus Jakarta Sans',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+
+                // Result actions
+                if (_resultUrl != null && _selected.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _addSelectedToCart,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: _dark,
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Add to cart',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _white,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => AppShellController.of(context).openExplore(),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: _white,
-                            borderRadius: BorderRadius.circular(28),
-                            border: Border.all(color: _lightGrey),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              AppShellController.of(context).openExplore(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: _white,
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: _lightGrey),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'View in Explore',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: _dark,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
+                              ),
+                            ),
                           ),
-                          child: const Center(
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final p in _selected)
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ItemDetailsScreen(product: p),
+                            ),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _lightGold,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
                             child: Text(
-                              'View in Explore',
-                              style: TextStyle(
-                                fontSize: 14,
+                              p.name,
+                              style: const TextStyle(
+                                fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: _dark,
                                 fontFamily: 'Plus Jakarta Sans',
@@ -790,253 +851,232 @@ class _VisualStudioScreenState extends State<VisualStudioScreen> {
                             ),
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Collapsible description (optional)
+                GestureDetector(
+                  onTap: () => setState(() => _descExpanded = !_descExpanded),
+                  child: Container(
+                    key: _tipDescKey,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final p in _selected)
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ItemDetailsScreen(product: p),
-                          ),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _lightGold,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
+                    decoration: BoxDecoration(
+                      color: _white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: _lightGrey, width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.notes_rounded, size: 18, color: _grey),
+                        const SizedBox(width: 10),
+                        const Expanded(
                           child: Text(
-                            p.name,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: _dark,
+                            'Add description (optional)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: _grey,
                               fontFamily: 'Plus Jakarta Sans',
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
-              // Collapsible description (optional)
-              GestureDetector(
-                onTap: () => setState(() => _descExpanded = !_descExpanded),
-                child: Container(
-                  key: _tipDescKey,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: _white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: _lightGrey, width: 1.5),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.notes_rounded, size: 18, color: _grey),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Add description (optional)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                        AnimatedRotation(
+                          turns: _descExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 22,
                             color: _grey,
-                            fontFamily: 'Plus Jakarta Sans',
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
                       ),
-                      AnimatedRotation(
-                        turns: _descExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 22, color: _grey),
+                      decoration: BoxDecoration(
+                        color: _white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _lightGrey, width: 1.5),
                       ),
+                      child: TextField(
+                        controller: _descCtrl,
+                        maxLines: 3,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: _dark,
+                          fontFamily: 'Plus Jakarta Sans',
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'Describe your design preferences...',
+                          hintStyle: TextStyle(
+                            color: _grey,
+                            fontSize: 14,
+                            fontFamily: 'Plus Jakarta Sans',
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ),
+                  crossFadeState: _descExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 200),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Material to visualise
+                const Text(
+                  'Material to visualise',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _dark,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Add the material you want the AI to place in your room.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: _grey,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  key: _tipMaterialsKey,
+                  height: 96,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (int i = 0; i < _selected.length; i++)
+                        _MaterialThumb(
+                          product: _selected[i],
+                          onRemove: () => _removeMaterial(i),
+                        ),
+                      // Add tile — hidden once the per-render cap is reached.
+                      if (_selected.length < _maxMaterials)
+                        GestureDetector(
+                          onTap: _openMaterialPicker,
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            margin: const EdgeInsets.only(top: 8),
+                            decoration: BoxDecoration(
+                              color: _white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: _lightGrey, width: 1.5),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: _gold,
+                              size: 30,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _lightGrey, width: 1.5),
-                    ),
-                    child: TextField(
-                      controller: _descCtrl,
-                      maxLines: 3,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: _dark,
-                        fontFamily: 'Plus Jakarta Sans',
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Describe your design preferences...',
-                        hintStyle: TextStyle(
-                          color: _grey,
-                          fontSize: 14,
-                          fontFamily: 'Plus Jakarta Sans',
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                ),
-                crossFadeState: _descExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Material to visualise
-              const Text(
-                'Material to visualise',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _dark,
-                  fontFamily: 'Plus Jakarta Sans',
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Add the material you want the AI to place in your room.',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: _grey,
-                  fontFamily: 'Plus Jakarta Sans',
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                key: _tipMaterialsKey,
-                height: 96,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    for (int i = 0; i < _selected.length; i++)
-                      _MaterialThumb(
-                        product: _selected[i],
-                        onRemove: () => _removeMaterial(i),
-                      ),
-                    // Add tile — hidden once the per-render cap is reached.
-                    if (_selected.length < _maxMaterials)
-                      GestureDetector(
-                        onTap: _openMaterialPicker,
-                        child: Container(
-                          width: 88,
-                          height: 88,
-                          margin: const EdgeInsets.only(top: 8),
-                          decoration: BoxDecoration(
-                            color: _white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: _lightGrey, width: 1.5),
-                          ),
-                          child: const Icon(Icons.add, color: _gold, size: 30),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Action buttons (only once a photo is picked)
-              if (_picked != null)
-                Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _clearPhoto,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          color: _white,
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(color: _lightGrey, width: 1.5),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: _dark,
-                              fontFamily: 'Plus Jakarta Sans',
+                // Action buttons (only once a photo is picked)
+                if (_picked != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _clearPhoto,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              color: _white,
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(color: _lightGrey, width: 1.5),
                             ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: (_uploading || _generating)
-                          ? null
-                          : (_uploadedUrl == null
-                              ? _upload
-                              : () => _generate(forceRetry: _resultUrl != null)),
-                      child: Opacity(
-                        opacity: (_uploading || _generating) ? 0.7 : 1,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          decoration: BoxDecoration(
-                            color: _gold,
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _uploading
-                                  ? 'Uploading…'
-                                  : _generating
-                                      ? 'Visualising…'
-                                      : _uploadedUrl == null
-                                          ? 'Upload'
-                                          : _resultUrl == null
-                                              ? 'Visualise with AI'
-                                              : 'Visualise again',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: _white,
-                                fontFamily: 'Plus Jakarta Sans',
+                            child: const Center(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: _dark,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: (_uploading || _generating)
+                              ? null
+                              : (_uploadedUrl == null
+                                    ? _upload
+                                    : () => _generate(
+                                        forceRetry: _resultUrl != null,
+                                      )),
+                          child: Opacity(
+                            opacity: (_uploading || _generating) ? 0.7 : 1,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              decoration: BoxDecoration(
+                                color: _gold,
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _uploading
+                                      ? 'Uploading…'
+                                      : _generating
+                                      ? 'Visualising…'
+                                      : _uploadedUrl == null
+                                      ? 'Upload'
+                                      : _resultUrl == null
+                                      ? 'Visualise with AI'
+                                      : 'Visualise again',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: _white,
+                                    fontFamily: 'Plus Jakarta Sans',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 }
@@ -1077,7 +1117,8 @@ class _MaterialThumb extends StatelessWidget {
                       bottom: 6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.55),
@@ -1185,8 +1226,9 @@ class _ShimmerLoadingState extends State<_ShimmerLoading>
                         Color(0xFFEDE4D2),
                       ],
                       stops: const [0.1, 0.3, 0.4],
-                      transform:
-                          _SlidingGradientTransform(_controller.value * 2 - 1),
+                      transform: _SlidingGradientTransform(
+                        _controller.value * 2 - 1,
+                      ),
                     ),
                   ),
                 );
@@ -1194,8 +1236,10 @@ class _ShimmerLoadingState extends State<_ShimmerLoading>
             ),
             Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _white.withOpacity(0.85),
                   borderRadius: BorderRadius.circular(24),
@@ -1249,11 +1293,16 @@ class _FullScreenImageViewer extends StatelessWidget {
                   fit: BoxFit.contain,
                   placeholder: (context, url) => const Center(
                     child: CircularProgressIndicator(
-                      color: _gold, strokeWidth: 2),
+                      color: _gold,
+                      strokeWidth: 2,
+                    ),
                   ),
                   errorWidget: (context, url, error) => const Center(
-                    child: Icon(Icons.broken_image_rounded,
-                        size: 48, color: Color(0xFFB8B8B2)),
+                    child: Icon(
+                      Icons.broken_image_rounded,
+                      size: 48,
+                      color: Color(0xFFB8B8B2),
+                    ),
                   ),
                 ),
               ),
@@ -1271,8 +1320,11 @@ class _FullScreenImageViewer extends StatelessWidget {
                   color: Colors.black.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close_rounded,
-                    size: 24, color: Colors.white),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 24,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -1355,8 +1407,11 @@ class _CategorySectionState extends State<_CategorySection> {
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded,
-                      size: 20, color: _grey),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: _grey,
+                  ),
                 ),
               ],
             ),
@@ -1379,50 +1434,161 @@ class _CategorySectionState extends State<_CategorySection> {
                   ),
                 )
               else
-                ...available.map((m) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: GestureDetector(
-                        onTap: () => widget.onSelect(m),
-                        behavior: HitTestBehavior.opaque,
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: ProductImage(
-                                  imageUrl: m.imageUrl,
-                                  cacheWidth: 150,
-                                  placeholderIconSize: 14,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                m.name,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: _dark,
-                                  fontFamily: 'Plus Jakarta Sans',
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.add_circle_outline_rounded,
-                                color: _gold, size: 20),
-                          ],
-                        ),
-                      ),
-                    )),
+                ...available.map(
+                  (m) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _MaterialPickerProductRow(
+                      product: m,
+                      onSelect: () => widget.onSelect(m),
+                    ),
+                  ),
+                ),
             ],
           ),
-          crossFadeState:
-              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          crossFadeState: _expanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 200),
         ),
         const Divider(height: 1, color: _lightGrey),
+      ],
+    );
+  }
+}
+
+/// Normal product row with a secondary dropdown only for multi-image products.
+class _MaterialPickerProductRow extends StatefulWidget {
+  final Product product;
+  final VoidCallback onSelect;
+
+  const _MaterialPickerProductRow({
+    required this.product,
+    required this.onSelect,
+  });
+
+  @override
+  State<_MaterialPickerProductRow> createState() =>
+      _MaterialPickerProductRowState();
+}
+
+class _MaterialPickerProductRowState extends State<_MaterialPickerProductRow> {
+  bool _imagesExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final urls = widget.product.displayImageUrls;
+    final hasMultipleImages = urls.length > 1;
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: widget.onSelect,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: ProductImage(
+                    imageUrl: urls.isEmpty ? null : urls.first,
+                    cacheWidth: 150,
+                    placeholderIconSize: 14,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.product.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _dark,
+                    fontFamily: 'Plus Jakarta Sans',
+                  ),
+                ),
+              ),
+              if (hasMultipleImages)
+                GestureDetector(
+                  onTap: () =>
+                      setState(() => _imagesExpanded = !_imagesExpanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${urls.length} images',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _grey,
+                            fontFamily: 'Plus Jakarta Sans',
+                          ),
+                        ),
+                        AnimatedRotation(
+                          turns: _imagesExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color: _grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const Icon(
+                Icons.add_circle_outline_rounded,
+                color: _gold,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+        if (hasMultipleImages)
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 8, left: 60),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _lightGrey.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final url in urls)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 58,
+                        height: 58,
+                        child: ProductImage(
+                          imageUrl: url,
+                          cacheWidth: 160,
+                          placeholderIconSize: 14,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            crossFadeState: _imagesExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
       ],
     );
   }
